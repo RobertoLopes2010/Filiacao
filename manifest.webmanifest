@@ -1,0 +1,28 @@
+{
+  "name": "Proposta de Filiação — ABRAMUS",
+  "short_name": "Filiação",
+  "description": "Preencha, confira e exporte a Proposta de Filiação (Pessoa Física) da ABRAMUS. Funciona offline e nenhum dado sai do aparelho.",
+  "id": "/filiacao-abramus/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FFFFFF",
+  "theme_color": "#008082",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Revisar e exportar",
+      "short_name": "Revisar",
+      "url": "./index.html#revisao",
+      "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
