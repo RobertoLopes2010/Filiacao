@@ -950,6 +950,9 @@
     if (emAppNativo()) {
       $('#miInstall').hidden = true;
     }
+    /* A porta na barra é só do APK, onde sair é uma ação real do app. Numa
+       aba comum ela prometeria um fechamento que o navegador não permite. */
+    $('#btnSair').hidden = !emAppNativo();
     if (emAppNativo() || emJanelaInstalada()) {
       $('#miSair').hidden = false;
     }
