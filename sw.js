@@ -1,6 +1,6 @@
 /* Service worker: cache-first para os arquivos do app.
    O app não faz nenhuma requisição de rede além dos próprios arquivos estáticos. */
-var CACHE = 'filiacao-abramus-v8';
+var CACHE = 'filiacao-abramus-v18';
 
 var ARQUIVOS = [
   './',
@@ -16,7 +16,8 @@ var ARQUIVOS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/maskable-512.png',
-  './icons/apple-touch-icon.png'
+  './icons/apple-touch-icon.png',
+  './icons/abramus-marca-branca.png'
 ];
 
 self.addEventListener('install', function (ev) {

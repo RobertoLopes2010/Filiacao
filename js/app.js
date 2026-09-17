@@ -17,6 +17,48 @@
   function emAppNativo() {
     return typeof global.FichaAndroid !== 'undefined' && !!global.FichaAndroid;
   }
+
+  /* PWA instalada: roda em janela própria, sem barra de endereço, então
+     fechá-la é fechar o app — diferente de uma aba comum do navegador. */
+  function emJanelaInstalada() {
+    try {
+      return (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) ||
+             global.navigator.standalone === true;
+    } catch (e) { return false; }
+  }
+
+  /* Sair descarta o preenchimento (é o que o diálogo avisa), então a
+     confirmação não é formalidade: sem ela um toque na barra apagaria tudo. */
+  function pedirSaida() {
+    fecharSheets();
+    /* fecharSheets() só esconde de fato depois da transição; abrir antes disso
+       faria o próprio diálogo ser escondido pelo timer dela. */
+    setTimeout(function () { abrirSheet('confirmSheet'); }, 240);
+  }
+
+  function sairDoApp() {
+    fecharSheets();
+    /* O aviso do diálogo diz que o preenchimento se perde — então se perde
+       mesmo: nada de rascunho de um filiado ficando no aparelho depois que
+       ele encerrou. O formulário é remontado vazio porque, se o navegador
+       recusar o close(), a tela precisa refletir o que já foi apagado. */
+    St.limpar();
+    tocados = {};
+    construir();
+    St.set('data_assinatura', St.hojeBR());
+    irPara(0);
+    atualizar();
+    if (emAppNativo() && global.FichaAndroid.sair) {
+      global.FichaAndroid.sair();
+      return;
+    }
+    global.close();
+    /* Se o navegador recusar o close() (janela que não foi aberta por
+       script), pelo menos o usuário fica sabendo por quê. */
+    setTimeout(function () {
+      if (!global.closed) toast('Feche pelo botão da janela: o navegador não permite que a página se feche sozinha.');
+    }, 350);
+  }
   var timerPreview = null;
   var canvasesPreview = null;
 
@@ -824,12 +866,14 @@
   /* ---------------------------------------------------------------- */
   function iniciar() {
     St.carregar();
+    /* O salvamento é silencioso enquanto dá certo; só a falha interessa ao
+       usuário, e uma vez basta — repetir o aviso a cada tecla seria ruído. */
+    var avisouFalhaAoSalvar = false;
     St.definirCallbackSalvar(function (estado) {
-      var chip = $('#saveState');
-      chip.textContent = estado === 'salvo' ? 'Salvo' : 'Sem espaço';
-      chip.classList.toggle('is-erro', estado !== 'salvo');
-      chip.classList.add('piscou');
-      setTimeout(function () { chip.classList.remove('piscou'); }, 600);
+      if (estado === 'salvo') { avisouFalhaAoSalvar = false; return; }
+      if (avisouFalhaAoSalvar) return;
+      avisouFalhaAoSalvar = true;
+      toast('Sem espaço para salvar o rascunho neste aparelho.', 'erro');
     });
 
     construir();
@@ -873,21 +917,18 @@
 
     /* No APK não há o que instalar: o beforeinstallprompt nunca dispara no
        WebView e o item só confundiria quem já está com o app instalado.
-       Em compensação existe um app para fechar — o que no navegador não faz
-       sentido, já que a aba não é nossa para fechar. */
+       Em compensação existe um app para fechar — o que numa aba comum do
+       navegador não faz sentido, já que a aba não é nossa para fechar. */
     if (emAppNativo()) {
       $('#miInstall').hidden = true;
+    }
+    if (emAppNativo() || emJanelaInstalada()) {
       $('#miSair').hidden = false;
     }
 
-    $('#miSair').addEventListener('click', function () {
-      fecharSheets();
-      /* Sem confirmação: o rascunho é salvo a cada digitação, então sair não
-         perde nada e reabrir devolve o formulário no ponto em que estava. */
-      if (emAppNativo() && global.FichaAndroid.sair) {
-        global.FichaAndroid.sair();
-      }
-    });
+    $('#miSair').addEventListener('click', pedirSaida);
+    $('#btnSair').addEventListener('click', pedirSaida);
+    $('#confirmSim').addEventListener('click', sairDoApp);
 
     $('#miInstall').addEventListener('click', function () {
       fecharSheets();

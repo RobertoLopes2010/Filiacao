@@ -99,20 +99,18 @@ button {
   min-width: 0;
 }
 
-.brand__mark {
-  width: 36px;
-  height: 36px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.16);
-  border-radius: 11px;
-  flex: 0 0 auto;
-}
-
 .brand__txt {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+/* Uma linha cada: com o logo maior ao lado, deixar o título quebrar
+   engordaria a barra, cuja altura é fixa em --h-bar. */
+.brand__txt strong,
+.brand__txt span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .brand__txt strong {
   font-size: 15px;
@@ -123,6 +121,12 @@ button {
   font-size: 11.5px;
   opacity: 0.85;
 }
+.brand__org {
+  color: cyan;
+  font-style: normal;
+  font-weight: 700;
+  opacity: 1;
+}
 
 .app-bar__actions {
   display: flex;
@@ -131,22 +135,19 @@ button {
   flex: 0 0 auto;
 }
 
-.save-chip {
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(255, 255, 255, 0.18);
-  padding: 4px 9px;
-  border-radius: 999px;
-  transition:
-    background 0.25s,
-    transform 0.25s;
+/* A arte usada aqui é a marca recolorida em branco a 70% (gerada a partir de
+   icons/AbramusDireitoAutoral.png), então ela vive direto sobre o teal da
+   barra — sem placa nem sombra, que só criariam um bloco em volta. */
+.app-bar__logo {
+  height: 46px;
+  width: auto;
+  flex: 0 0 auto;
 }
-.save-chip.piscou {
-  background: rgba(255, 255, 255, 0.42);
-  transform: scale(1.05);
-}
-.save-chip.is-erro {
-  background: #c0392b;
+/* Telas estreitas: o logo cede altura para o título não ser truncado. */
+@media (max-width: 400px) {
+  .app-bar__logo {
+    height: 38px;
+  }
 }
 
 .icon-btn {
@@ -1073,6 +1074,56 @@ select.input {
 .pend-ok p strong {
   color: var(--tinta);
   font-size: 15px;
+}
+
+/* Variante do sheet que não sobe do rodapé: cai do alto à direita, junto do
+   botão da porta que a abriu. A especificidade maior vence a regra de
+   ≥720px que centraliza o painel padrão. */
+.sheet--canto .sheet__panel {
+  left: auto;
+  right: 12px;
+  bottom: auto;
+  top: calc(var(--topo) + 10px);
+  width: min(330px, calc(100vw - 24px));
+  max-height: none;
+  border-radius: var(--raio);
+  padding-bottom: 8px;
+  opacity: 0;
+  transform: translateY(-14px);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 0.8, 0.3, 1),
+    opacity 0.22s;
+}
+.sheet--canto.is-on .sheet__panel {
+  opacity: 1;
+  transform: translateY(0);
+}
+/* O grip indica arrastar a sheet de baixo; aqui só confundiria. */
+.sheet--canto .sheet__grip {
+  display: none;
+}
+.sheet--canto .sheet__head {
+  padding-top: 14px;
+}
+.sheet--canto .sheet__head h2 {
+  font-size: 16px;
+}
+
+.aviso-perda {
+  border-left: 2px solid var(--erro);
+  padding-left: 10px;
+  margin: 0 0 14px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--tinta-2);
+}
+
+.confirm-acoes {
+  display: flex;
+  gap: 10px;
+}
+.confirm-acoes .btn {
+  flex: 1;
 }
 
 .menu-item {
