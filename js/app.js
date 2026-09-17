@@ -18,13 +18,13 @@
     return typeof global.FichaAndroid !== 'undefined' && !!global.FichaAndroid;
   }
 
-  /* PWA instalada: roda em janela própria, sem barra de endereço, então
-     fechá-la é fechar o app — diferente de uma aba comum do navegador. */
-  function emJanelaInstalada() {
-    try {
-      return (global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) ||
-             global.navigator.standalone === true;
-    } catch (e) { return false; }
+  /* iPhone/iPad: a instalação é manual e tem um caminho próprio no Safari.
+     O iPad com iPadOS 13+ se anuncia como Mac, daí o teste por toque. */
+  function emIOS() {
+    var nav = global.navigator || {};
+    var ua = nav.userAgent || '';
+    return /iPad|iPhone|iPod/.test(ua) ||
+           (ua.indexOf('Macintosh') >= 0 && nav.maxTouchPoints > 1);
   }
 
   /* Sair descarta o preenchimento (é o que o diálogo avisa), então a
@@ -950,12 +950,11 @@
     if (emAppNativo()) {
       $('#miInstall').hidden = true;
     }
-    /* A porta na barra é só do APK, onde sair é uma ação real do app. Numa
-       aba comum ela prometeria um fechamento que o navegador não permite. */
+    /* Sair só existe no APK, onde é uma ação real do app (finishAndRemoveTask).
+       Fora dele — aba comum ou PWA instalada, inclusive no iPhone, onde o
+       close() não fecha nada — o comando prometeria o que não cumpre. */
     $('#btnSair').hidden = !emAppNativo();
-    if (emAppNativo() || emJanelaInstalada()) {
-      $('#miSair').hidden = false;
-    }
+    $('#miSair').hidden = !emAppNativo();
 
     $('#miSair').addEventListener('click', pedirSaida);
     $('#btnSair').addEventListener('click', pedirSaida);
@@ -966,6 +965,10 @@
       if (promptInstalar) {
         promptInstalar.prompt();
         promptInstalar = null;
+      } else if (emIOS()) {
+        /* No iOS não existe beforeinstallprompt: a instalação é manual, e o
+           caminho tem nome próprio — falar em "menu do navegador" não ajuda. */
+        toast('No Safari, toque em Compartilhar › "Adicionar à Tela de Início".');
       } else {
         toast('Use o menu do navegador › "Adicionar à tela inicial".');
       }

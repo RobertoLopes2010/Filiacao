@@ -1,6 +1,6 @@
 /* Service worker: cache-first para os arquivos do app.
    O app não faz nenhuma requisição de rede além dos próprios arquivos estáticos. */
-var CACHE = 'filiacao-abramus-v20';
+var CACHE = 'filiacao-abramus-v21';
 
 var ARQUIVOS = [
   './',
