@@ -543,8 +543,40 @@
     t.appendChild(el('span', 'acao__rot', titulo));
     t.appendChild(el('span', 'acao__desc', desc));
     b.appendChild(t);
-    b.addEventListener('click', fn);
+    b.addEventListener('click', function () { avisarAssinatura(fn, titulo); });
     return b;
+  }
+
+  /* Toda ação de "Exportar e enviar" passa por este aviso: a ficha só vale
+     assinada e acompanhada dos documentos. A ação roda no clique de
+     "continuar", ainda dentro do gesto do usuário — Web Share e a janela de
+     impressão exigem isso. */
+  var acaoEnvioPendente = null;
+
+  function avisarAssinatura(fn, titulo) {
+    acaoEnvioPendente = fn;
+    // "Baixar PDF" → "Entendi, baixar PDF": o botão diz o que vai acontecer.
+    $('#envioOk').textContent = 'Entendi, ' + titulo.charAt(0).toLowerCase() + titulo.slice(1);
+    $('#envioEmail').textContent = S.EMAIL_DESTINO;
+    $('#envioAssina').textContent = St.get('assinatura')
+      ? 'Você desenhou a assinatura no app — confira na pré-visualização se ela está legível.'
+      : 'Imprima e assine à mão, conforme o documento de identificação apresentado.';
+    var lista = $('#envioDocs');
+    lista.innerHTML = '';
+    S.DOCUMENTOS.forEach(function (doc) {
+      var li = el('li', '', doc.rot);
+      if (doc.obs) li.appendChild(el('span', '', ' — ' + doc.obs));
+      lista.appendChild(li);
+    });
+    abrirSheet('envioSheet');
+    setTimeout(function () { $('#envioOk').focus(); }, 60);
+  }
+
+  function confirmarEnvio() {
+    var fn = acaoEnvioPendente;
+    acaoEnvioPendente = null;
+    fecharSheets();
+    if (fn) fn();
   }
 
   function enviarPorEmail(podeShare) {
@@ -923,6 +955,7 @@
     $('#miSair').addEventListener('click', pedirSaida);
     $('#btnSair').addEventListener('click', pedirSaida);
     $('#confirmSim').addEventListener('click', sairDoApp);
+    $('#envioOk').addEventListener('click', confirmarEnvio);
 
     $('#miInstall').addEventListener('click', function () {
       fecharSheets();

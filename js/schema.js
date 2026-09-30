@@ -27,7 +27,6 @@
     { k: 'doc_carta',  rot: 'Carta de desligamento da sociedade anterior', obs: 'Caso exista.' },
     { k: 'doc_ident',  rot: 'Cópia de RG e CPF', obs: '' },
     { k: 'doc_resid',  rot: 'Comprovante de residência', obs: '' },
-    { k: 'doc_foto',   rot: '2 (duas) fotos 3x4', obs: '' },
     { k: 'doc_cessao', rot: 'Cessão de direitos', obs: 'Caso opte pelo recebimento através de pessoa jurídica.' }
   ];
 

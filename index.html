@@ -236,6 +236,51 @@
       </div>
     </div>
 
+    <!-- Aviso antes de exportar/enviar: a ficha só vale assinada e acompanhada
+         dos documentos. Aparece a cada ação de "Exportar e enviar". -->
+    <div id="envioSheet" class="sheet sheet--modal" hidden>
+      <div class="sheet__backdrop" data-close-sheet></div>
+      <div
+        class="sheet__panel"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="envioTitle"
+        aria-describedby="envioDesc"
+      >
+        <div class="envio-topo">
+          <span class="envio-topo__ic" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28">
+              <path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round" />
+              <path d="m13.5 6.5 4 4M13 20h7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="envio-topo__selo">Importante</span>
+          <h2 id="envioTitle">Assine a ficha antes de enviar</h2>
+        </div>
+        <div class="sheet__body">
+          <ol id="envioDesc" class="envio-passos">
+            <li>
+              <strong>Assine a ficha</strong>
+              <span id="envioAssina">Imprima e assine à mão, conforme o documento de identificação apresentado.</span>
+            </li>
+            <li>
+              <strong>Assim que assinar, envie a ficha e os documentos obrigatórios</strong>
+              <span>Tudo junto, para <b id="envioEmail"></b>.</span>
+            </li>
+          </ol>
+          <div class="envio-docs">
+            <p class="envio-docs__tit">Documentos a anexar junto com a ficha</p>
+            <ul id="envioDocs"></ul>
+          </div>
+          <p class="envio-alerta">A filiação só é analisada com a ficha assinada e os documentos completos.</p>
+          <div class="confirm-acoes">
+            <button class="btn btn--ghost" type="button" data-close-sheet>Voltar</button>
+            <button id="envioOk" class="btn btn--primary" type="button">Entendi, seguir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <footer class="bottom-bar">
       <button id="btnPending" class="pending-btn" type="button">
         <span id="pendingCount" class="pending-btn__badge">0</span>

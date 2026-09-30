@@ -245,7 +245,7 @@
       guiche: 'SP',
       local_assinatura: 'São Paulo',
       data_assinatura: hojeBR(),
-      doc_ident: true, doc_resid: true, doc_foto: true
+      doc_ident: true, doc_resid: true
     };
     salvar();
     notifica();
