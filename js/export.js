@@ -163,14 +163,23 @@
     L.push('CPF: ' + (d.cpf || '—') + '   RG: ' + (d.rg || '—') + ' ' + (d.rg_orgao || ''));
     L.push('Nascimento: ' + (d.nascimento || '—'));
     if (d.pseudonimo) L.push('Pseudônimo: ' + d.pseudonimo);
-    L.push('Centro de custo: ' + (d.centro_custo || '—'));
     L.push('');
     L.push('Endereço: ' + [d.endereco, d.numero, d.complemento].filter(Boolean).join(', '));
     L.push([d.bairro, d.cidade, d.uf].filter(Boolean).join(' - ') + '  CEP ' + (d.cep || '—'));
     L.push('Celular: ' + (d.cel || '—') + (d.tel ? '   Tel: ' + d.tel : ''));
     L.push('E-mail: ' + (d.email || '—'));
     L.push('');
-    L.push('Guichê de sociedade: ' + (d.guiche === 'Outro' ? (d.guiche_outro || 'Outro') : (d.guiche || '—')));
+    if (d.forma_pagamento === 'conta') {
+      L.push('Pagamento: conta bancária ' + (d.tipo_conta || '').toLowerCase() + ' — ' +
+        [d.banco, d.agencia && 'ag. ' + d.agencia,
+         d.conta_numero && 'c/' + (d.conta_modalidade || '').toLowerCase() + ' ' + d.conta_numero].filter(Boolean).join(', '));
+    } else if (d.forma_pagamento === 'pj') {
+      L.push('Pagamento: pessoa jurídica — ' + [d.razao_social, d.cnpj && 'CNPJ ' + d.cnpj].filter(Boolean).join(', '));
+    } else if (d.forma_pagamento === 'guiche') {
+      L.push('Guichê de sociedade: ' + (d.guiche === 'Outro' ? (d.guiche_outro || 'Outro') : (d.guiche || '—')));
+    } else {
+      L.push('Pagamento: —');
+    }
     L.push('');
     L.push('A ficha completa segue em anexo (PDF).');
     return L.join('\n');

@@ -40,53 +40,17 @@
     fecharSheets();
     /* O aviso do diálogo diz que o preenchimento se perde — então se perde
        mesmo: nada de rascunho de um filiado ficando no aparelho depois que
-       ele encerrou. O formulário é remontado vazio porque, se o navegador
-       recusar o close(), a tela precisa refletir o que já foi apagado. */
+       ele encerrou. Limpar antes de sair também deixa o app pronto para o
+       próximo atendimento, já que o APK pode voltar do mesmo processo. */
     St.limpar();
     tocados = {};
     construir();
     St.set('data_assinatura', St.hojeBR());
     irPara(0);
     atualizar();
-    if (emAppNativo() && global.FichaAndroid.sair) {
-      global.FichaAndroid.sair();
-      return;
-    }
-    fecharAba();
+    if (emAppNativo() && global.FichaAndroid.sair) global.FichaAndroid.sair();
   }
 
-  /* Fechar a aba por script só é permitido quando foi o próprio script que a
-     abriu. O open('', '_self') é a forma antiga de reivindicar essa condição:
-     ainda funciona em parte dos navegadores e é inofensivo nos demais. */
-  function fecharAba() {
-    try { global.open('', '_self'); } catch (e) { /* bloqueado: segue no close() */ }
-    try { global.close(); } catch (e) { /* idem */ }
-    /* Se a aba continuar de pé (Chrome e Firefox recusam em aba comum), não
-       adianta insistir: o app se despede e deixa o fechamento com o usuário. */
-    setTimeout(function () {
-      if (!global.closed) telaEncerrada();
-    }, 300);
-  }
-
-  function telaEncerrada() {
-    if (document.getElementById('encerrado')) return;
-    var tela = el('div', 'encerrado');
-    tela.id = 'encerrado';
-    var marca = document.createElement('img');
-    marca.src = 'icons/abramus-marca-branca.png';
-    marca.alt = 'ABRAMUS — direito autoral levado a sério';
-    marca.className = 'encerrado__marca';
-    tela.appendChild(marca);
-    tela.appendChild(el('h1', 'encerrado__titulo', 'Preenchimento encerrado'));
-    tela.appendChild(el('p', 'encerrado__txt', 'Você já pode fechar esta aba.'));
-    document.body.appendChild(tela);
-    /* Some com o app inteiro: os dados já foram apagados, e deixar o
-       formulário atrás desta tela só convidaria a recomeçar sem querer. */
-    ['.app-bar', '.main', '.bottom-bar'].forEach(function (sel) {
-      var n = document.querySelector(sel);
-      if (n) n.hidden = true;
-    });
-  }
   var timerPreview = null;
   var canvasesPreview = null;
 

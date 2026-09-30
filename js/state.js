@@ -19,6 +19,15 @@
     return r;
   }
 
+  function mascaraCNPJ(v) {
+    var d = S.soDigitos(v).slice(0, 14), r = d;
+    if (d.length > 12) r = d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8, 12) + '-' + d.slice(12);
+    else if (d.length > 8) r = d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5, 8) + '/' + d.slice(8);
+    else if (d.length > 5) r = d.slice(0, 2) + '.' + d.slice(2, 5) + '.' + d.slice(5);
+    else if (d.length > 2) r = d.slice(0, 2) + '.' + d.slice(2);
+    return r;
+  }
+
   function mascaraCEP(v) {
     var d = S.soDigitos(v).slice(0, 8);
     return d.length > 5 ? d.slice(0, 5) + '-' + d.slice(5) : d;
@@ -40,7 +49,7 @@
     return '(' + d.slice(0, 2) + ') ' + d.slice(2, 7) + '-' + d.slice(7);
   }
 
-  var MASCARAS = { cpf: mascaraCPF, cep: mascaraCEP, data: mascaraData, fone: mascaraFone };
+  var MASCARAS = { cpf: mascaraCPF, cnpj: mascaraCNPJ, cep: mascaraCEP, data: mascaraData, fone: mascaraFone };
 
   function aplicaMascara(tipo, valor) {
     return MASCARAS[tipo] ? MASCARAS[tipo](valor) : valor;
@@ -190,6 +199,10 @@
     } catch (e) {
       dados = {};
     }
+    // Fichas salvas antes do modelo com três formas de pagamento só tinham o guichê.
+    if (!dados.forma_pagamento && dados.guiche) dados.forma_pagamento = 'guiche';
+    // A foto 3x4 deixou de ser coletada no app (vai anexada em papel); descarta a que ficou salva.
+    delete dados.foto;
     return dados;
   }
 
@@ -212,7 +225,6 @@
       rg: '12.345.678-9',
       rg_orgao: 'SSPSP',
       pseudonimo: 'MARIA EXEMPLO',
-      centro_custo: 'SÃO PAULO',
       sexo: 'Feminino',
       nacionalidade: 'BRASIL',
       naturalidade: 'SÃO PAULO',
@@ -229,6 +241,7 @@
       tel: '(11) 0000-0000',
       cel: '(11) 90000-0000',
       email: 'maria.exemplo@example.com',
+      forma_pagamento: 'guiche',
       guiche: 'SP',
       local_assinatura: 'São Paulo',
       data_assinatura: hojeBR(),

@@ -133,6 +133,18 @@
     return y + 26;
   }
 
+  /* Campo de múltipla escolha: rótulo acima e caixas lado a lado. */
+  function campoOpcoes(g, x, y, larg, rotulo, opcoes, valor, op) {
+    op = op || {};
+    if (op.destaque && !valor) retangulo(g, x - 2, y - 2, larg + 4, 24, { preenche: COR.pendFundo });
+    texto(g, rotulo, x, y + 6, { tam: 6.5, cor: COR.suave, peso: 'bold' });
+    var px = x;
+    opcoes.forEach(function (o) {
+      px = opcaoCaixa(g, px, y + 17, valor === o, o) + (op.espaco || 10);
+    });
+    return y + 26;
+  }
+
   /* Título de seção com faixa. */
   function secao(g, x, y, larg, titulo) {
     retangulo(g, x, y, larg, 15, { preenche: COR.teal });
@@ -246,10 +258,7 @@
     campo(g, x, yl, c2, 'CPF', d.cpf, { destaque: destaque });
     y = campo(g, x + c2 + 12, yl, c2, 'PSEUDÔNIMO', d.pseudonimo, {});
 
-    yl = y;
-    campo(g, x, yl, c2, 'NOME DE BANDA', d.banda, {});
-    y = campo(g, x + c2 + 12, yl, c2, 'CENTRO DE CUSTO', d.centro_custo, { destaque: destaque });
-
+    y = campo(g, x, y, larg, 'NOME DE BANDA', d.banda, {});
     y = campo(g, x, y, larg, 'OUTROS PSEUDÔNIMOS', d.outros_pseudonimos, {});
 
     // --- declaração ---
@@ -283,14 +292,12 @@
     }
     linha(g, assX, y, assX + assL, y, COR.tinta, 0.8);
     texto(g, (d.nome || '').toUpperCase(), x + larg / 2, y + 12, { tam: 9, peso: 'bold', alinha: 'center' });
-    texto(g, 'Assinar conforme documento de identificação apresentado', x + larg / 2, y + 22,
-      { tam: 7, cor: COR.suave, alinha: 'center' });
     y += 36;
 
     // --- uso exclusivo ABRAMUS ---
-    var boxY = PAG_A - 30 - 96;
+    var boxY = PAG_A - 30 - 126;
     if (y < boxY) y = boxY;
-    retangulo(g, x, y, larg, 90, { borda: COR.linha, preenche: '#F7FAFA' });
+    retangulo(g, x, y, larg, 120, { borda: COR.linha, preenche: '#F7FAFA' });
     texto(g, 'PREENCHIMENTO EXCLUSIVO DA ABRAMUS (não preencher)', x + 10, y + 15,
       { tam: 7.5, peso: 'bold', cor: COR.suave });
     var bx = x + 10, by = y + 24, bw = (larg - 20 - 24) / 3;
@@ -299,6 +306,7 @@
     codigos.forEach(function (cd) {
       campo(g, bx + cd[1] * (bw + 12), by + cd[2] * 30, bw, cd[0].toUpperCase(), '', {});
     });
+    campo(g, bx, by + 60, larg - 20, 'CENTRO DE CUSTO', '', {});
 
     rodape(g, 1);
   }
@@ -318,13 +326,8 @@
     var yl = y;
     campo(g, x, yl, c3, 'RG', d.rg, { destaque: destaque });
     campo(g, x + c3 + 12, yl, c3, 'ÓRGÃO EXPEDIDOR', d.rg_orgao, { destaque: destaque });
-    // sexo
-    var sx = x + (c3 + 12) * 2;
-    if (destaque && !d.sexo) retangulo(g, sx - 2, yl - 2, c3 + 4, 24, { preenche: COR.pendFundo });
-    texto(g, 'SEXO', sx, yl + 6, { tam: 6.5, cor: COR.suave, peso: 'bold' });
-    var px = opcaoCaixa(g, sx, yl + 17, d.sexo === 'Masculino', 'Masculino') + 12;
-    opcaoCaixa(g, px, yl + 17, d.sexo === 'Feminino', 'Feminino');
-    y = yl + 26;
+    y = campoOpcoes(g, x + (c3 + 12) * 2, yl, c3, 'SEXO', ['Masculino', 'Feminino', 'Outro'], d.sexo,
+      { destaque: destaque, espaco: 8 });
 
     yl = y;
     campo(g, x, yl, c2, 'NACIONALIDADE', d.nacionalidade, { destaque: destaque });
@@ -364,30 +367,81 @@
 
     // --- pagamento ---
     y += 6;
-    y = secao(g, x, y, larg, 'Dados para pagamento');
-    texto(g, 'Para quem não possui conta bancária.', x, y + 2, { tam: 8, cor: COR.suave });
-    y += 16;
+    y = secao(g, x, y, larg, 'Dados para pagamento (preencha apenas uma das opções)');
+    var forma = d.forma_pagamento;
+    var c4 = (larg - 36) / 4;
+    // Só a opção escolhida é impressa: dados de outra opção, preenchidos antes de trocar, ficam de fora.
+    function pg(f, k) { return forma === f ? d[k] : ''; }
 
-    if (destaque && !d.guiche) retangulo(g, x - 2, y - 10, larg + 4, 22, { preenche: COR.pendFundo });
+    function subsecao(f, titulo) {
+      if (destaque && !forma) retangulo(g, x - 2, y - 9, larg + 4, 14, { preenche: COR.pendFundo });
+      opcaoCaixa(g, x, y + 2, forma === f, titulo);
+      return y + 10;
+    }
+    function divisa() {
+      linha(g, x, y, x + larg, y, '#EAF0F0', 0.5);
+      return y + 12;
+    }
+
+    // para quem possui conta bancária
+    var dc = destaque && forma === 'conta';
+    y = subsecao('conta', 'Para quem possui conta bancária');
+    yl = y;
+    campoOpcoes(g, x, yl, c3, 'TIPO DE CONTA', ['Individual', 'Conjunta'], pg('conta', 'tipo_conta'), { destaque: dc });
+    campo(g, x + c3 + 12, yl, c3, 'CPF DO TITULAR DA CONTA',
+      pg('conta', 'cpf_titular') || (pg('conta', 'tipo_conta') === 'Individual' ? d.cpf : ''),
+      { destaque: dc && d.tipo_conta === 'Conjunta' });
+    y = campo(g, x + (c3 + 12) * 2, yl, c3, 'DOC/TED: BANCO', pg('conta', 'banco'), { destaque: dc });
+    yl = y;
+    var numOk = !!(d.conta_numero && d.conta_modalidade);
+    campo(g, x, yl, c4, 'CÓDIGO DA AGÊNCIA', pg('conta', 'agencia'), { destaque: dc });
+    campo(g, x + c4 + 12, yl, c4, 'CIDADE', pg('conta', 'conta_cidade'), { destaque: dc });
+    campo(g, x + (c4 + 12) * 2, yl, c4, 'Nº C/CORRENTE',
+      pg('conta', 'conta_modalidade') === 'Corrente' ? d.conta_numero : '', { destaque: dc && !numOk });
+    y = campo(g, x + (c4 + 12) * 3, yl, c4, 'Nº C/POUPANÇA',
+      pg('conta', 'conta_modalidade') === 'Poupança' ? d.conta_numero : '', { destaque: dc && !numOk });
+    y = divisa();
+
+    // para quem não possui conta bancária
+    y = subsecao('guiche', 'Para quem não possui conta bancária');
+    y += 14;
+    var guiche = pg('guiche', 'guiche');
+    if (destaque && forma === 'guiche' && !guiche) retangulo(g, x - 2, y - 10, larg + 4, 16, { preenche: COR.pendFundo });
     texto(g, 'Guichê de sociedade:', x, y + 2, { tam: 8.5, peso: 'bold' });
     var gx = x + 96;
     ['SP', 'RJ', 'BA', 'PE', 'PR', 'GO'].forEach(function (gg) {
-      gx = opcaoCaixa(g, gx, y + 2, d.guiche === gg, gg) + 10;
+      gx = opcaoCaixa(g, gx, y + 2, guiche === gg, gg) + 10;
     });
-    gx = opcaoCaixa(g, gx, y + 2, d.guiche === 'Outro', 'Outro') + 6;
-    if (d.guiche === 'Outro') {
+    gx = opcaoCaixa(g, gx, y + 2, guiche === 'Outro', 'Outro') + 6;
+    if (guiche === 'Outro') {
       linha(g, gx, y + 4, x + larg, y + 4, COR.linha);
       texto(g, d.guiche_outro || '', gx + 2, y + 2, { tam: 8.5, peso: 'bold' });
     }
-    y += 20;
+    y += 12;
+    y = divisa();
 
-    retangulo(g, x, y, larg, 26, { preenche: COR.tealClaro });
-    paragrafo(g, 'QUEM DESEJA RECEBER EM CONTA BANCÁRIA DE TERCEIROS DEVE ENTRAR EM CONTATO COM A ASSOCIAÇÃO.',
-      x + 10, y + 16, larg - 20, 8, 10, { peso: 'bold', cor: COR.teal });
-    y += 26 + 14;
+    // para quem receber como pessoa jurídica
+    var dp = destaque && forma === 'pj';
+    y = subsecao('pj', 'Para quem receber como pessoa jurídica*');
+    yl = y;
+    campo(g, x, yl, c2, 'RAZÃO SOCIAL', pg('pj', 'razao_social'), { destaque: dp });
+    y = campo(g, x + c2 + 12, yl, c2, 'CNPJ', pg('pj', 'cnpj'), { destaque: dp });
+    yl = y;
+    campo(g, x, yl, c4, 'BANCO', pg('pj', 'pj_banco'), { destaque: dp });
+    campo(g, x + c4 + 12, yl, c4, 'CIDADE', pg('pj', 'pj_cidade'), { destaque: dp });
+    campo(g, x + (c4 + 12) * 2, yl, c4, 'CÓDIGO AGÊNCIA', pg('pj', 'pj_agencia'), { destaque: dp });
+    y = campo(g, x + (c4 + 12) * 3, yl, c4, 'Nº CONTA CORRENTE', pg('pj', 'pj_conta'), { destaque: dp });
+    texto(g, '*É necessário o envio de cessão de direitos de pessoa física para pessoa jurídica e contrato social da empresa.',
+      x, y + 2, { tam: 7, cor: COR.suave });
+    y += 10;
+
+    retangulo(g, x, y, larg, 20, { preenche: COR.tealClaro });
+    texto(g, 'QUEM DESEJA RECEBER EM CONTA BANCÁRIA DE TERCEIROS DEVE ENTRAR EM CONTATO COM A ASSOCIAÇÃO.',
+      x + larg / 2, y + 13, { tam: 7.5, peso: 'bold', cor: COR.teal, alinha: 'center' });
+    y += 20 + 14;
 
     // --- documentos ---
-    y = secao(g, x, y, larg, 'Documentos a enviar para filiacaoonline@abramus.org.br');
+    y = secao(g, x, y, larg, 'Lista de documentos a serem anexados à proposta');
     S.DOCUMENTOS.forEach(function (doc) {
       var marcada = d[doc.k] === true;
       caixa(g, x, y - 1, marcada, 9);
