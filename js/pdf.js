@@ -102,7 +102,7 @@
     objeto(idInfo,
       '<< /Title ' + textoPDF(meta.titulo || 'Proposta de Filiação — ABRAMUS') +
       ' /Author ' + textoPDF(meta.autor || '') +
-      ' /Subject ' + textoPDF('Proposta de Filiação - Pessoa Física') +
+      ' /Subject ' + textoPDF(meta.assunto || 'Proposta de Filiação - Pessoa Física') +
       ' /Producer ' + textoPDF('Ficha de Filiação PWA') +
       ' /Creator ' + textoPDF('Ficha de Filiação PWA') +
       ' /CreationDate (' + dataPDF(new Date()) + ') >>');

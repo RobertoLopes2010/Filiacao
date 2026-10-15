@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#008082" />
     <meta
       name="description"
-      content="Proposta de Filiação ABRAMUS — Pessoa Física. Preenchimento, conferência e exportação 100% no dispositivo."
+      content="Proposta de Filiação (Pessoa Física, Menor de idade, Pessoa Jurídica e Herdeiro/Sucessor) e Pedido de Desligamento ABRAMUS. Preenchimento, conferência e exportação 100% no dispositivo."
     />
     <title>Proposta de Filiação — ABRAMUS</title>
     <link rel="manifest" href="manifest.webmanifest" />
@@ -40,8 +40,8 @@
             height="240"
           />
           <div class="brand__txt">
-            <strong>Proposta de Filiação</strong>
-            <span><em class="brand__org">ABRAMUS</em> · Pessoa Física</span>
+            <strong id="brandTitulo">Proposta de Filiação</strong>
+            <span><em class="brand__org" id="brandPublico">Pessoa Física</em></span>
           </div>
         </div>
         <div class="app-bar__actions">
@@ -69,6 +69,25 @@
                 stroke-linecap="round"
               />
             </svg>
+          </button>
+          <button
+            id="btnLimpar"
+            class="icon-btn icon-btn--limpar"
+            type="button"
+            aria-label="Limpar formulário"
+            title="Limpar formulário"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                d="M5 7h14M10 11v6m4-6v6M6 7l1 13h10l1-13M9 7V4h6v3"
+                stroke="currentColor"
+                stroke-width="2"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="icon-btn__rot">Limpar</span>
           </button>
           <button
             id="btnMenu"
@@ -144,6 +163,73 @@
       >
         <div class="sheet__grip"></div>
         <div class="sheet__body">
+          <p class="menu-grupo">Ficha</p>
+          <button class="menu-item menu-item--ficha" type="button" data-ficha="filiacao">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path
+                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Filiação — Pessoa Física
+          </button>
+          <button class="menu-item menu-item--ficha" type="button" data-ficha="menor">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path
+                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Filiação — Menor de idade
+          </button>
+          <button class="menu-item menu-item--ficha" type="button" data-ficha="pj">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path
+                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Filiação — Pessoa Jurídica
+          </button>
+          <button class="menu-item menu-item--ficha" type="button" data-ficha="herdeiro">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path
+                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Filiação — Herdeiro / Sucessor
+          </button>
+          <button class="menu-item menu-item--ficha" type="button" data-ficha="desligamento">
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path
+                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 14h6"
+                stroke="currentColor"
+                stroke-width="1.8"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Pedido de Desligamento
+          </button>
+          <hr class="menu-sep" />
           <button class="menu-item" type="button" id="miInstall">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path
@@ -264,15 +350,15 @@
               <span id="envioAssina">Imprima e assine à mão, conforme o documento de identificação apresentado.</span>
             </li>
             <li>
-              <strong>Assim que assinar, envie a ficha e os documentos obrigatórios</strong>
+              <strong id="envioPasso">Assim que assinar, envie a ficha e os documentos obrigatórios</strong>
               <span>Tudo junto, para <b id="envioEmail"></b>.</span>
             </li>
           </ol>
-          <div class="envio-docs">
+          <div id="envioDocsBox" class="envio-docs">
             <p class="envio-docs__tit">Documentos a anexar junto com a ficha</p>
             <ul id="envioDocs"></ul>
           </div>
-          <p class="envio-alerta">A filiação só é analisada com a ficha assinada e os documentos completos.</p>
+          <p id="envioAlerta" class="envio-alerta">A filiação só é analisada com a ficha assinada e os documentos completos.</p>
           <div class="confirm-acoes">
             <button class="btn btn--ghost" type="button" data-close-sheet>Voltar</button>
             <button id="envioOk" class="btn btn--primary" type="button">Entendi, seguir</button>
@@ -306,8 +392,10 @@
 
     <script src="js/schema.js"></script>
     <script src="js/state.js"></script>
+    <script src="js/logo.js"></script>
     <script src="js/render.js"></script>
     <script src="js/pdf.js"></script>
+    <script src="js/anexos.js"></script>
     <script src="js/export.js"></script>
     <script src="js/app.js"></script>
   </body>

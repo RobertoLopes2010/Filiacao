@@ -26,7 +26,7 @@
   --sombra-alta: 0 12px 40px rgba(16, 35, 31, 0.18);
   --topo: env(safe-area-inset-top, 0px);
   --baixo: env(safe-area-inset-bottom, 0px);
-  --h-bar: 116px;
+  --h-bar: 132px;
   --h-rodape: 68px;
 }
 
@@ -123,6 +123,8 @@ button {
 }
 .brand__org {
   color: cyan;
+  font-size: 14px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
   font-style: normal;
   font-weight: 700;
   opacity: 1;
@@ -139,14 +141,32 @@ button {
    icons/AbramusDireitoAutoral.png), então ela vive direto sobre o teal da
    barra — sem placa nem sombra, que só criariam um bloco em volta. */
 .app-bar__logo {
-  height: 46px;
+  height: 62px;
   width: auto;
   flex: 0 0 auto;
+  /* sombra translúcida para destacar o logo do fundo */
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
 }
 /* Telas estreitas: o logo cede altura para o título não ser truncado. */
-@media (max-width: 400px) {
+@media (max-width: 440px) {
   .app-bar__logo {
-    height: 38px;
+    height: 50px;
+  }
+  /* tipos longos ("Pessoa Física / Pessoa Jurídica") quebram em vez de cortar */
+  .brand__txt strong {
+    font-size: 14px;
+  }
+  .brand__txt span {
+    white-space: normal;
+    line-height: 1.15;
+  }
+  .brand__org {
+    font-size: 13px;
+  }
+}
+@media (max-width: 370px) {
+  .app-bar__logo {
+    height: 40px;
   }
 }
 
@@ -163,6 +183,43 @@ button {
 }
 .icon-btn:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+/* "Limpar formulário" no topo: marrom a 50% de transparência; ao passar o
+   mouse, focar pelo teclado e tocar, vira vermelho (#b22222) com branco. */
+.icon-btn--limpar {
+  width: auto;
+  min-width: 38px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  background: rgba(139, 90, 43, 0.5);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  transition: background 0.18s, box-shadow 0.18s;
+}
+.icon-btn--limpar:hover,
+.icon-btn--limpar:focus-visible {
+  color: #fff;
+  background: #b22222;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+  outline: none;
+}
+.icon-btn--limpar:active {
+  color: #fff;
+  background: #8e1b1b;
+}
+/* Telas estreitas: só o ícone, para não espremer o título. */
+@media (max-width: 480px) {
+  .icon-btn__rot {
+    display: none;
+  }
+  .icon-btn--limpar {
+    padding: 0;
+    justify-content: center;
+  }
 }
 .sheet .icon-btn {
   color: var(--tinta-2);
@@ -292,6 +349,30 @@ button {
   font-weight: 650;
   color: var(--tinta);
 }
+/* Subtítulo que separa grupos de campos na mesma etapa (ex.: "Herdeiro 2"). */
+.field--titulo {
+  grid-column: 1 / -1;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 2px solid var(--marca-clara);
+}
+/* subgrupo dentro do mesmo herdeiro (ex.: dados para pagamento) */
+.field--subtitulo {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--linha);
+}
+.field--subtitulo .field__titulo {
+  font-size: 13.5px;
+  color: var(--tinta-2);
+}
+.field__titulo {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--marca-escura);
+}
+
 /* "Obrigatório" é sinalizado pela barra vermelha à esquerda do campo;
    o texto fica só para leitores de tela. */
 .req {
@@ -579,35 +660,6 @@ select.input {
   align-items: flex-start;
 }
 
-/* assinatura */
-.pad {
-  position: relative;
-  border: 1.5px solid var(--linha);
-  border-radius: var(--raio-sm);
-  background: var(--branco);
-  overflow: hidden;
-}
-.pad__cv {
-  display: block;
-  width: 100%;
-  height: 150px;
-  touch-action: none;
-  cursor: crosshair;
-}
-.pad__linha {
-  position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 34px;
-  border-bottom: 1.5px dashed var(--linha);
-  pointer-events: none;
-}
-.pad__acoes {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
 /* ---------------- revisão ---------------- */
 .revisao {
   display: flex;
@@ -817,6 +869,328 @@ select.input {
 }
 .nota strong {
   color: var(--marca-escura);
+}
+
+/* ---------------- documentos (anexos) ---------------- */
+.anexos {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.card--status .card__txt .card__alerta {
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 1;
+}
+.nota--aviso {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--raio-sm);
+  background: var(--aviso-fundo);
+  color: #6b4300;
+}
+.anexo-reqs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.anexo-req {
+  background: var(--branco);
+  border: 1px solid var(--linha);
+  border-left: 4px solid var(--linha);
+  border-radius: var(--raio);
+  padding: 13px 14px;
+  box-shadow: var(--sombra);
+}
+.anexo-req--ok {
+  border-left-color: var(--ok);
+}
+.anexo-req--falta,
+.anexo-req--incompleto {
+  border-left-color: var(--erro);
+}
+.anexo-req--naoSeAplica {
+  opacity: 0.7;
+  box-shadow: none;
+}
+.anexo-req__cab {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.anexo-req__tit {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tinta);
+}
+.anexo-req__obs,
+.anexo-req__dica,
+.anexo-req__msg {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--tinta-2);
+  line-height: 1.4;
+}
+.anexo-req__msg {
+  font-weight: 650;
+}
+.anexo-req--falta .anexo-req__msg,
+.anexo-req--incompleto .anexo-req__msg {
+  color: var(--erro);
+}
+.anexo-req--ok .anexo-req__msg {
+  color: var(--ok);
+}
+.anexo-status {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: var(--linha-2);
+  color: var(--tinta-2);
+}
+.anexo-status--ok {
+  background: #e7f6ef;
+  color: var(--ok);
+}
+.anexo-status--falta,
+.anexo-status--incompleto {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+.anexo-req__acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.anexo-req__acoes .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.anexo-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.anexo {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid var(--linha);
+  border-radius: var(--raio-sm);
+  background: var(--marca-suave);
+}
+.anexo--aviso {
+  border-color: #f0d9a8;
+  background: var(--aviso-fundo);
+}
+.anexo__mini {
+  width: 56px;
+  height: 72px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--branco);
+  border: 1px solid var(--linha);
+}
+.anexo__mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.anexo__pdf {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--erro);
+}
+.anexo__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.anexo__nome {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--tinta);
+}
+.anexo__aviso {
+  font-size: 12px;
+  color: #6b4300;
+  line-height: 1.35;
+}
+.anexo__tipo {
+  max-width: 100%;
+  font-size: 12.5px;
+}
+.anexo__x {
+  flex: 0 0 auto;
+  color: var(--tinta-2);
+}
+.anexo__x:hover {
+  background: var(--erro-fundo);
+  color: var(--erro);
+}
+
+.formato {
+  margin: 12px 0 14px;
+}
+.formato__rot {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--tinta);
+}
+.formato__dica {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--tinta-2);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+/* ---------------- câmera (tela cheia) ---------------- */
+/* acima dos sheets (60), abaixo do toast (80) e do "carregando" (90) */
+.camera {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: #000;
+  color: #fff;
+  padding: var(--topo) 0 var(--baixo);
+}
+.camera__topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 10px 16px;
+}
+.camera__tit {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.camera__cont {
+  flex: 0 0 auto;
+  font-size: 12.5px;
+  color: #9fe3d9;
+}
+.camera__fechar {
+  color: #fff;
+}
+.camera__palco {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.camera__video,
+.camera__foto {
+  max-width: 100%;
+  max-height: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* moldura de referência para enquadrar a folha */
+.camera__guia {
+  position: absolute;
+  inset: 8% 10%;
+  border: 2px dashed rgba(255, 255, 255, 0.55);
+  border-radius: 12px;
+  pointer-events: none;
+}
+.camera__msg {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--raio-sm);
+  background: rgba(0, 0, 0, 0.75);
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+}
+.camera__barra {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 18px;
+}
+.camera__barra--revisar {
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.camera__barra--revisar .btn--ghost {
+  color: #fff;
+}
+.camera__barra--revisar .btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.camera__lado {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--raio-sm);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.camera__lado:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+.camera__disparo {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.camera__disparo span {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.12s;
+}
+.camera__disparo:active span {
+  transform: scale(0.88);
+}
+.camera__disparo:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 /* ---------------- botões ---------------- */
@@ -1302,6 +1676,32 @@ select.input {
 .menu-item--danger svg {
   color: var(--erro);
 }
+.menu-grupo {
+  margin: 0 12px 4px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.menu-item--ficha.is-on {
+  background: var(--marca-clara);
+  color: var(--marca);
+}
+.menu-item--ficha.is-on::after {
+  content: "";
+  margin-left: auto;
+  width: 8px;
+  height: 14px;
+  border: solid currentColor;
+  border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+.menu-sep {
+  margin: 8px 4px;
+  border: 0;
+  border-top: 1px solid var(--linha);
+}
 .menu-note {
   margin: 12px 4px 0;
   font-size: 12px;
@@ -1400,5 +1800,44 @@ select.input {
   * {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------- impressão ----------------
+   "Imprimir" põe as páginas da ficha em #impressao (export.js) e chama
+   window.print() na própria página, sem pop-up. No papel só elas aparecem. */
+#impressao {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    overflow: visible !important;
+  }
+  body > *:not(#impressao) {
+    display: none !important;
+  }
+  #impressao {
+    display: block;
+  }
+  #impressao img {
+    display: block;
+    width: 210mm;
+    /* um fio abaixo de 297mm: o arredondamento não empurra uma folha em branco */
+    height: 296.5mm;
+    object-fit: contain;
+    break-after: page;
+    page-break-after: always;
+  }
+  #impressao img:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 }

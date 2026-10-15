@@ -7,6 +7,7 @@
   var St = global.FichaState;
   var R = global.FichaRender;
   var Ex = global.FichaExport;
+  var FA = global.FichaAnexos;
 
   var stepAtual = 0;
   var tocados = {};
@@ -42,7 +43,8 @@
        mesmo: nada de rascunho de um filiado ficando no aparelho depois que
        ele encerrou. Limpar antes de sair também deixa o app pronto para o
        próximo atendimento, já que o APK pode voltar do mesmo processo. */
-    St.limpar();
+    St.limparTudo();
+    FA.limparTudo();
     tocados = {};
     construir();
     St.set('data_assinatura', St.hojeBR());
@@ -106,6 +108,8 @@
 
       if (step.revisao) {
         sec.appendChild(construirRevisao());
+      } else if (step.anexos) {
+        sec.appendChild(construirAnexos());
       } else {
         var grade = el('div', 'grid');
         step.campos.forEach(function (campo) { grade.appendChild(construirCampo(campo)); });
@@ -136,7 +140,13 @@
     if (campo.tipo === 'categorias') return construirCategorias(box);
     if (campo.tipo === 'checklist') return construirChecklist(box, campo);
     if (campo.tipo === 'foto') return construirFoto(box, campo);
-    if (campo.tipo === 'assinatura') return construirAssinatura(box, campo);
+    if (campo.tipo === 'titulo') {
+      // subtítulo que separa grupos de campos (ex.: "Herdeiro 2"); não guarda valor
+      box.classList.add('field--titulo');
+      if (campo.sub) box.classList.add('field--subtitulo');
+      box.appendChild(el(campo.sub ? 'h4' : 'h3', 'field__titulo', campo.rotulo));
+      return box;
+    }
 
     var idInput = 'f-' + campo.k;
     var rot = el('label', 'field__label');
@@ -173,6 +183,32 @@
       });
       entrada.id = idInput;
       entrada.setAttribute('role', 'group');
+    } else if (campo.tipo === 'multipla') {
+      // Várias opções marcáveis; o valor é a lista dos v marcados.
+      entrada = el('div', 'multipla');
+      campo.opcoes.forEach(function (o) {
+        var b = el('button', 'check-row');
+        b.type = 'button';
+        b.dataset.v = o.v;
+        var marca = el('span', 'checkbox');
+        marca.innerHTML = '<svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        b.appendChild(marca);
+        var txt = el('span', 'check-row__txt');
+        txt.appendChild(el('span', 'check-row__rot', o.rot));
+        b.appendChild(txt);
+        b.addEventListener('click', function () {
+          var atual = Array.isArray(St.get(campo.k)) ? St.get(campo.k) : [];
+          var nova = atual.indexOf(o.v) >= 0
+            ? atual.filter(function (v) { return v !== o.v; })
+            // mantém a ordem das opções, não a dos cliques
+            : campo.opcoes.map(function (op) { return op.v; }).filter(function (v) { return v === o.v || atual.indexOf(v) >= 0; });
+          St.set(campo.k, nova);
+          marcarTocado(campo.k);
+        });
+        entrada.appendChild(b);
+      });
+      entrada.id = idInput;
+      entrada.setAttribute('role', 'group');
     } else if (campo.tipo === 'textarea') {
       entrada = el('textarea', 'input input--area');
       entrada.rows = 2;
@@ -187,7 +223,7 @@
       if (campo.tipo === 'data') { entrada.inputMode = 'numeric'; entrada.placeholder = 'DD/MM/AAAA'; }
       ligarTexto(entrada, campo);
     }
-    if (campo.tipo !== 'radio') entrada.id = idInput;
+    if (campo.tipo !== 'radio' && campo.tipo !== 'multipla') entrada.id = idInput;
     box.appendChild(entrada);
 
     if (campo.dica) box.appendChild(el('p', 'field__hint', campo.dica));
@@ -358,98 +394,6 @@
     });
   }
 
-  /* ---------- assinatura ---------- */
-  function construirAssinatura(box, campo) {
-    box.classList.add('field--bloco');
-    box.appendChild(el('p', 'field__label', campo.rotulo));
-    if (campo.dica) box.appendChild(el('p', 'field__hint', campo.dica));
-
-    var pad = el('div', 'pad');
-    var cv = el('canvas', 'pad__cv');
-    cv.id = 'f-assinatura';
-    pad.appendChild(cv);
-    pad.appendChild(el('span', 'pad__linha'));
-    box.appendChild(pad);
-
-    var acoes = el('div', 'pad__acoes');
-    var bLimpa = el('button', 'btn btn--ghost', 'Limpar assinatura');
-    bLimpa.type = 'button';
-    bLimpa.addEventListener('click', function () { limparPad(cv); St.set('assinatura', ''); });
-    acoes.appendChild(bLimpa);
-    box.appendChild(acoes);
-
-    setTimeout(function () { iniciarPad(cv); }, 0);
-    return box;
-  }
-
-  function iniciarPad(cv) {
-    var dpr = Math.min(window.devicePixelRatio || 1, 3);
-    var larg = cv.parentNode.clientWidth || 320;
-    cv.width = Math.round(larg * dpr);
-    cv.height = Math.round(150 * dpr);
-    cv.style.height = '150px';
-    var g = cv.getContext('2d');
-    g.scale(dpr, dpr);
-    g.lineWidth = 2.2;
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-    g.strokeStyle = '#10231F';
-    cv._g = g;
-
-    var salvo = St.get('assinatura');
-    if (salvo) {
-      var img = new Image();
-      img.onload = function () { g.drawImage(img, 0, 0, larg, 150); };
-      img.src = salvo;
-    }
-
-    var desenhando = false, ux = 0, uy = 0, sujo = false;
-
-    function pos(ev) {
-      var r = cv.getBoundingClientRect();
-      var p = ev.touches ? ev.touches[0] : ev;
-      return { x: p.clientX - r.left, y: p.clientY - r.top };
-    }
-    function inicio(ev) {
-      ev.preventDefault();
-      desenhando = true;
-      var p = pos(ev);
-      ux = p.x; uy = p.y;
-      g.beginPath();
-      g.moveTo(ux, uy);
-      g.lineTo(ux + 0.1, uy + 0.1);
-      g.stroke();
-      sujo = true;
-    }
-    function move(ev) {
-      if (!desenhando) return;
-      ev.preventDefault();
-      var p = pos(ev);
-      g.beginPath();
-      g.moveTo(ux, uy);
-      g.lineTo(p.x, p.y);
-      g.stroke();
-      ux = p.x; uy = p.y;
-    }
-    function fim() {
-      if (!desenhando) return;
-      desenhando = false;
-      if (sujo) St.set('assinatura', cv.toDataURL('image/png'));
-    }
-
-    cv.addEventListener('pointerdown', inicio);
-    cv.addEventListener('pointermove', move);
-    window.addEventListener('pointerup', fim);
-    cv.addEventListener('touchstart', inicio, { passive: false });
-    cv.addEventListener('touchmove', move, { passive: false });
-    cv.addEventListener('touchend', fim);
-  }
-
-  function limparPad(cv) {
-    if (!cv._g) return;
-    cv._g.clearRect(0, 0, cv.width, cv.height);
-  }
-
   /* ---------------------------------------------------------------- */
   /* etapa de revisão                                                  */
   /* ---------------------------------------------------------------- */
@@ -485,7 +429,11 @@
     cardAcoes.appendChild(el('h2', 'card__title', 'Exportar e enviar'));
     var acoes = el('div', 'acoes');
 
-    acoes.appendChild(botaoAcao('Baixar PDF', 'Ficha completa em A4, 2 páginas.', 'pdf', function () {
+    var nPag = S.ficha.paginas;
+    var descPDF = nPag === 1 ? 'Documento completo em A4, 1 página.'
+      : S.ficha.paginasExtras ? 'Ficha em A4, ' + nPag + ' páginas para cada herdeiro.'
+      : 'Ficha completa em A4, ' + nPag + ' páginas.';
+    acoes.appendChild(botaoAcao('Baixar PDF', descPDF, 'pdf', function () {
       ocupado(true, 'Gerando PDF…');
       Ex.baixarPDF()
         .then(function (a) { toast('PDF gerado: ' + a.nome); })
@@ -493,10 +441,10 @@
         .then(function () { ocupado(false); });
     }));
 
-    acoes.appendChild(botaoAcao('Baixar JPG', 'Uma imagem por página, alta resolução.', 'jpg', function () {
+    acoes.appendChild(botaoAcao('Baixar JPG', nPag === 1 ? 'Imagem da página, alta resolução.' : 'Uma imagem por página, alta resolução.', 'jpg', function () {
       ocupado(true, 'Gerando imagens…');
       Ex.baixarJPG()
-        .then(function () { toast('2 imagens JPG geradas.'); })
+        .then(function (arqs) { toast(arqs.length === 1 ? 'Imagem JPG gerada.' : arqs.length + ' imagens JPG geradas.'); })
         .catch(function () { toast('Falha ao gerar as imagens.', 'erro'); })
         .then(function () { ocupado(false); });
     }));
@@ -504,7 +452,7 @@
     acoes.appendChild(botaoAcao('Imprimir', 'Abre o diálogo de impressão do aparelho.', 'print', function () {
       ocupado(true, 'Preparando impressão…');
       Ex.imprimir()
-        .catch(function () { toast('Permita janelas pop-up para imprimir.', 'erro'); })
+        .catch(function () { toast('Não foi possível preparar a impressão.', 'erro'); })
         .then(function () { ocupado(false); });
     }));
 
@@ -526,10 +474,639 @@
     return wrap;
   }
 
+  /* ---------------------------------------------------------------- */
+  /* etapa de documentos (anexos)                                      */
+  /* ---------------------------------------------------------------- */
+  /* Lista e validação mais recentes, guardadas para que os botões de envio
+     rodem síncronos no clique (Web Share exige o gesto do usuário). */
+  var anexosLista = [];
+  var anexosValidacao = null;
+  // como juntar os arquivos no envio/download: 'pdf' (PDF único) ou 'zip'
+  var CHAVE_FORMATO = 'abramus.formatoEnvio';
+  var formatoEnvio = (function () { try { return localStorage.getItem(CHAVE_FORMATO) === 'zip' ? 'zip' : 'pdf'; } catch (e) { return 'pdf'; } })();
+  var confirmarIncompleto = false;
+  var timerAnexos = null;
+
+  var ICONE_CAMERA = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+  var ICONE_CLIPE = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="m20 11-7.6 7.6a5 5 0 0 1-7.1-7.1L13 3.8a3.3 3.3 0 0 1 4.7 4.7l-7.6 7.6a1.7 1.7 0 0 1-2.4-2.4l7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function construirAnexos() {
+    var wrap = el('div', 'anexos');
+
+    var status = el('div', 'card card--status');
+    status.id = 'cardAnexos';
+    wrap.appendChild(status);
+
+    if (FA.soMemoria()) {
+      wrap.appendChild(el('p', 'nota nota--aviso',
+        'Este navegador não permite guardar os anexos: eles se perdem se a página for fechada. Envie logo após anexar.'));
+    }
+
+    var lista = el('div', 'anexo-reqs');
+    lista.id = 'anexoReqs';
+    wrap.appendChild(lista);
+
+    var orfaos = el('div', 'anexo-req anexo-req--orfaos');
+    orfaos.id = 'anexoOrfaos';
+    orfaos.hidden = true;
+    wrap.appendChild(orfaos);
+
+    var cardEnvio = el('div', 'card');
+    cardEnvio.appendChild(el('h2', 'card__title', 'Validar e enviar'));
+
+    // formato do pacote: PDF único ou ZIP com os arquivos originais
+    var fmt = el('div', 'formato');
+    fmt.appendChild(el('p', 'formato__rot', 'Como juntar os arquivos'));
+    var chips = el('div', 'chips');
+    chips.id = 'formatoEnvio';
+    chips.setAttribute('role', 'radiogroup');
+    [{ v: 'pdf', rot: 'PDF único' }, { v: 'zip', rot: 'Compactar (ZIP)' }].forEach(function (o) {
+      var c = el('button', 'chip', o.rot);
+      c.type = 'button';
+      c.dataset.v = o.v;
+      c.setAttribute('role', 'radio');
+      c.addEventListener('click', function () {
+        formatoEnvio = o.v;
+        try { localStorage.setItem(CHAVE_FORMATO, o.v); } catch (e) {}
+        desenharFormato();
+      });
+      chips.appendChild(c);
+    });
+    fmt.appendChild(chips);
+    var dicaFmt = el('p', 'formato__dica');
+    dicaFmt.id = 'formatoDica';
+    fmt.appendChild(dicaFmt);
+    cardEnvio.appendChild(fmt);
+
+    var acoes = el('div', 'acoes');
+
+    var bValidar = botaoSimples('Validar documentos', 'Confere se cada documento exigido por esta ficha foi anexado.', 'check', validarAnexos);
+    acoes.appendChild(bValidar);
+
+    var podeShare = Ex.podeCompartilharArquivos();
+    var bEnviar = botaoSimples(
+      podeShare ? 'Enviar ficha e documentos' : 'Baixar e abrir e-mail',
+      podeShare ? 'Abre o app de e-mail com tudo anexado.' : 'Baixa os arquivos e abre o e-mail já preenchido para você anexá-los.',
+      'mail', function () { enviarAnexos(bEnviar); });
+    bEnviar.id = 'btnEnviarAnexos';
+    acoes.appendChild(bEnviar);
+
+    var bBaixar = botaoSimples('Baixar tudo', '', 'pdf', baixarPacote);
+    bBaixar.id = 'btnBaixarAnexos';
+    acoes.appendChild(bBaixar);
+    cardEnvio.appendChild(acoes);
+
+    var nota = el('p', 'nota');
+    nota.innerHTML = 'Destinatário: <strong>' + S.EMAIL_DESTINO + '</strong>. As fotos ficam só neste aparelho até você enviar; ' +
+      'o envio usa o aplicativo de e-mail do aparelho. A conferência verifica se cada documento foi anexado e a qualidade da foto — ' +
+      'não lê o conteúdo, então confira se cada arquivo é o documento certo.';
+    cardEnvio.appendChild(nota);
+    wrap.appendChild(cardEnvio);
+
+    // um único input reaproveitado para câmera e arquivos
+    var inp = el('input');
+    inp.type = 'file';
+    inp.id = 'anexoInput';
+    inp.className = 'sr-only';
+    inp.addEventListener('change', function () {
+      var arquivos = Array.prototype.slice.call(inp.files || []);
+      var tipo = inp.dataset.tipo;
+      inp.value = '';
+      if (arquivos.length) receberArquivos(arquivos, tipo);
+    });
+    wrap.appendChild(inp);
+    return wrap;
+  }
+
+  /* Atualiza os chips de formato, a dica e o botão de download. */
+  function desenharFormato() {
+    $$('#formatoEnvio .chip').forEach(function (c) {
+      var on = c.dataset.v === formatoEnvio;
+      c.classList.toggle('is-on', on);
+      c.setAttribute('aria-checked', on ? 'true' : 'false');
+    });
+    var dica = $('#formatoDica');
+    if (dica) {
+      dica.textContent = formatoEnvio === 'zip'
+        ? 'Um único arquivo compactado com todas as fotos e PDFs originais: ' + FA.nomeZip(St.todos()) + '.'
+        : 'As fotos viram um único PDF, uma página por foto; PDFs anexados seguem à parte.';
+    }
+    var b = $('#btnBaixarAnexos');
+    if (b) {
+      $('.acao__rot', b).textContent = formatoEnvio === 'zip' ? 'Baixar tudo em ZIP' : 'Baixar tudo em PDF';
+      $('.acao__desc', b).textContent = formatoEnvio === 'zip'
+        ? 'Ficha assinada e documentos compactados num só arquivo.'
+        : 'Ficha assinada e documentos num único PDF, uma página por foto.';
+      $('.acao__ic', b).innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22">' + ICONES[formatoEnvio === 'zip' ? 'zip' : 'pdf'] + '</svg>';
+    }
+  }
+
+  function botaoSimples(titulo, desc, icone, fn) {
+    var b = el('button', 'acao');
+    b.type = 'button';
+    var ic = el('span', 'acao__ic');
+    ic.innerHTML = '<svg viewBox="0 0 24 24" width="22" height="22">' + ICONES[icone] + '</svg>';
+    b.appendChild(ic);
+    var t = el('span', 'acao__txt');
+    t.appendChild(el('span', 'acao__rot', titulo));
+    t.appendChild(el('span', 'acao__desc', desc));
+    b.appendChild(t);
+    b.addEventListener('click', fn);
+    return b;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* câmera dentro do app                                              */
+  /* ---------------------------------------------------------------- */
+  /* Usa a câmera que existir onde o app roda — traseira no celular, webcam
+     no computador — via getUserMedia, com troca entre câmeras. Tudo local:
+     o quadro capturado vira um arquivo JPEG que segue o caminho normal dos
+     anexos. No APK (sem permissão de câmera em tempo de execução) e onde
+     getUserMedia não existe, cai para o seletor do aparelho (input capture). */
+  var cam = { stream: null, tipo: '', cameras: [], indice: 0, capturado: null, tiradas: 0 };
+  var CHAVE_CAMERA = 'abramus.camera';
+
+  function cameraDisponivel() {
+    return !emAppNativo() && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) &&
+      global.isSecureContext !== false;
+  }
+
+  function tirarFoto(tipo, rotulo) {
+    if (!cameraDisponivel()) { escolherArquivos(tipo, true); return; }
+    cam.tipo = tipo;
+    cam.tiradas = 0;
+    var box = $('#camera') || construirCamera();
+    $('.camera__tit', box).textContent = rotulo;
+    $('.camera__cont', box).textContent = '';
+    box.hidden = false;
+    document.body.style.overflow = 'hidden';
+    modoAoVivo();
+    var salvo = '';
+    try { salvo = localStorage.getItem(CHAVE_CAMERA) || ''; } catch (e) {}
+    ligarCamera(salvo);
+  }
+
+  function construirCamera() {
+    var box = el('div', 'camera');
+    box.id = 'camera';
+    box.setAttribute('role', 'dialog');
+    box.setAttribute('aria-modal', 'true');
+    box.setAttribute('aria-label', 'Câmera');
+    box.hidden = true;
+    box.innerHTML =
+      '<div class="camera__topo">' +
+        '<p class="camera__tit"></p>' +
+        '<span class="camera__cont"></span>' +
+        '<button type="button" class="icon-btn camera__fechar" aria-label="Fechar câmera">' +
+          '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="camera__palco">' +
+        '<video class="camera__video" autoplay playsinline muted></video>' +
+        '<img class="camera__foto" alt="Foto capturada" hidden>' +
+        '<div class="camera__guia" aria-hidden="true"></div>' +
+        '<p class="camera__msg" hidden></p>' +
+      '</div>' +
+      '<div class="camera__barra camera__barra--vivo">' +
+        '<button type="button" class="camera__lado camera__arquivo">Escolher arquivo</button>' +
+        '<button type="button" class="camera__disparo" aria-label="Capturar foto"><span></span></button>' +
+        '<button type="button" class="camera__lado camera__trocar" style="visibility:hidden">' +
+          '<svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m9.5 12.5 2.5-2.5 2.5 2.5M12 10v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+          '<span>Trocar câmera</span></button>' +
+      '</div>' +
+      '<div class="camera__barra camera__barra--revisar" hidden>' +
+        '<button type="button" class="btn btn--ghost camera__refazer">Tirar de novo</button>' +
+        '<button type="button" class="btn btn--outline camera__outra">Usar e tirar outra</button>' +
+        '<button type="button" class="btn btn--primary camera__usar">Usar foto</button>' +
+      '</div>';
+    document.body.appendChild(box);
+
+    $('.camera__fechar', box).addEventListener('click', fecharCamera);
+    $('.camera__disparo', box).addEventListener('click', capturar);
+    $('.camera__trocar', box).addEventListener('click', trocarCamera);
+    $('.camera__arquivo', box).addEventListener('click', function () {
+      var tipo = cam.tipo;
+      fecharCamera();
+      escolherArquivos(tipo, false);
+    });
+    $('.camera__refazer', box).addEventListener('click', modoAoVivo);
+    $('.camera__usar', box).addEventListener('click', function () { usarCaptura(false); });
+    $('.camera__outra', box).addEventListener('click', function () { usarCaptura(true); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !box.hidden) fecharCamera();
+    });
+    // câmera ligada em aba escondida gasta bateria e mantém a luz acesa
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden && !box.hidden) fecharCamera();
+    });
+    return box;
+  }
+
+  function mensagemCamera(txt) {
+    var m = $('#camera .camera__msg');
+    m.textContent = txt || '';
+    m.hidden = !txt;
+  }
+
+  function pararStream() {
+    if (cam.stream) cam.stream.getTracks().forEach(function (t) { t.stop(); });
+    cam.stream = null;
+  }
+
+  /* deviceId vazio: pede a traseira se houver (no computador vem a webcam). */
+  function ligarCamera(deviceId) {
+    pararStream();
+    mensagemCamera('Abrindo a câmera…');
+    var video = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+    if (deviceId) video.deviceId = { exact: deviceId };
+    else video.facingMode = { ideal: 'environment' };
+
+    return navigator.mediaDevices.getUserMedia({ video: video, audio: false })
+      .catch(function (e) {
+        // câmera lembrada que sumiu (webcam desconectada): tenta qualquer uma
+        if (deviceId && (e.name === 'OverconstrainedError' || e.name === 'NotFoundError' || e.name === 'NotReadableError')) {
+          return navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+        }
+        throw e;
+      })
+      .then(function (stream) {
+        if ($('#camera').hidden) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+        cam.stream = stream;
+        var v = $('#camera .camera__video');
+        v.srcObject = stream;
+        var p = v.play();
+        if (p && p.catch) p.catch(function () {});
+        mensagemCamera('');
+        var atual = stream.getVideoTracks()[0];
+        var id = atual && atual.getSettings ? atual.getSettings().deviceId : '';
+        try { if (id) localStorage.setItem(CHAVE_CAMERA, id); } catch (e) {}
+        // os nomes e a lista completa só vêm depois da permissão concedida
+        return navigator.mediaDevices.enumerateDevices().then(function (devs) {
+          cam.cameras = devs.filter(function (d) { return d.kind === 'videoinput'; });
+          cam.indice = Math.max(0, cam.cameras.map(function (d) { return d.deviceId; }).indexOf(id));
+          var bt = $('#camera .camera__trocar');
+          // invisível mas ocupando o lugar, para o disparador ficar no centro
+          bt.style.visibility = cam.cameras.length < 2 ? 'hidden' : '';
+          var prox = cam.cameras[(cam.indice + 1) % cam.cameras.length];
+          bt.title = prox && prox.label ? 'Trocar para: ' + prox.label : 'Trocar câmera';
+        });
+      })
+      .catch(function (e) {
+        var nome = e && e.name;
+        if (nome === 'NotAllowedError' || nome === 'SecurityError') {
+          mensagemCamera('O acesso à câmera foi negado. Libere a câmera nas permissões do navegador ou use "Escolher arquivo".');
+        } else if (nome === 'NotFoundError' || nome === 'OverconstrainedError') {
+          mensagemCamera('Nenhuma câmera encontrada neste aparelho. Use "Escolher arquivo".');
+        } else if (nome === 'NotReadableError') {
+          mensagemCamera('A câmera está em uso por outro aplicativo. Feche-o e tente de novo, ou use "Escolher arquivo".');
+        } else {
+          mensagemCamera('Não foi possível abrir a câmera. Use "Escolher arquivo".');
+        }
+        $('#camera .camera__disparo').disabled = true;
+      });
+  }
+
+  function trocarCamera() {
+    if (cam.cameras.length < 2) return;
+    cam.indice = (cam.indice + 1) % cam.cameras.length;
+    ligarCamera(cam.cameras[cam.indice].deviceId);
+  }
+
+  function modoAoVivo() {
+    var box = $('#camera');
+    cam.capturado = null;
+    $('.camera__foto', box).hidden = true;
+    $('.camera__foto', box).removeAttribute('src');
+    $('.camera__video', box).hidden = false;
+    $('.camera__guia', box).hidden = false;
+    $('.camera__barra--vivo', box).hidden = false;
+    $('.camera__barra--revisar', box).hidden = true;
+    $('.camera__disparo', box).disabled = false;
+  }
+
+  function capturar() {
+    var v = $('#camera .camera__video');
+    if (!cam.stream || !v.videoWidth) { toast('A câmera ainda não está pronta.', 'aviso'); return; }
+    var cv = document.createElement('canvas');
+    cv.width = v.videoWidth;
+    cv.height = v.videoHeight;
+    cv.getContext('2d').drawImage(v, 0, 0, cv.width, cv.height);
+    cam.capturado = cv.toDataURL('image/jpeg', 0.92);
+    var box = $('#camera');
+    var img = $('.camera__foto', box);
+    img.src = cam.capturado;
+    img.hidden = false;
+    $('.camera__video', box).hidden = true;
+    $('.camera__guia', box).hidden = true;
+    $('.camera__barra--vivo', box).hidden = true;
+    $('.camera__barra--revisar', box).hidden = false;
+  }
+
+  function usarCaptura(continuar) {
+    if (!cam.capturado) return;
+    var bin = atob(cam.capturado.split(',')[1]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    cam.tiradas++;
+    var arquivo = new File([arr], 'camera-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+    var tipo = cam.tipo;
+    if (continuar) {
+      $('#camera .camera__cont').textContent = cam.tiradas + (cam.tiradas === 1 ? ' foto anexada' : ' fotos anexadas');
+      modoAoVivo();
+    } else {
+      fecharCamera();
+    }
+    receberArquivos([arquivo], tipo);
+  }
+
+  function fecharCamera() {
+    pararStream();
+    var box = $('#camera');
+    if (!box) return;
+    $('.camera__video', box).srcObject = null;
+    box.hidden = true;
+    document.body.style.overflow = '';
+  }
+
+  function escolherArquivos(tipo, camera) {
+    var inp = $('#anexoInput');
+    if (!inp) return;
+    inp.dataset.tipo = tipo;
+    inp.accept = camera ? 'image/*' : 'image/*,application/pdf,.pdf';
+    inp.multiple = !camera;
+    if (camera) inp.setAttribute('capture', 'environment'); else inp.removeAttribute('capture');
+    inp.click();
+  }
+
+  function receberArquivos(arquivos, tipo) {
+    ocupado(true, arquivos.length > 1 ? 'Preparando ' + arquivos.length + ' anexos…' : 'Preparando anexo…');
+    var erros = [], avisos = 0, ok = 0;
+    arquivos.reduce(function (p, arq) {
+      return p.then(function () {
+        return FA.adicionar(arq, tipo).then(function (reg) {
+          ok++;
+          if (reg.avisos && reg.avisos.length) avisos++;
+        }).catch(function (e) { erros.push((arq.name ? arq.name + ': ' : '') + (e && e.message || 'falha ao ler o arquivo.')); });
+      });
+    }, Promise.resolve()).then(function () {
+      // o item correspondente do checklist da ficha passa a constar como anexado
+      if (ok && /^doc_/.test(tipo)) St.set(tipo, true);
+      confirmarIncompleto = false;
+      ocupado(false);
+      return atualizarAnexos();
+    }).then(function () {
+      if (erros.length) toast(erros[0], 'erro');
+      else if (avisos) toast('Anexado, mas confira a qualidade da foto (veja o aviso).', 'aviso');
+      else toast(ok === 1 ? 'Documento anexado.' : ok + ' documentos anexados.');
+    });
+  }
+
+  function removerAnexo(a) {
+    FA.remover(a.id).then(function () {
+      confirmarIncompleto = false;
+      return atualizarAnexos();
+    }).then(function () { toast('Anexo removido.'); });
+  }
+
+  function agendarAnexos() {
+    clearTimeout(timerAnexos);
+    timerAnexos = setTimeout(atualizarAnexos, 120);
+  }
+
+  /* Relê os anexos da ficha ativa, valida e redesenha a etapa. */
+  function atualizarAnexos() {
+    return FA.listar().then(function (lista) {
+      anexosLista = lista;
+      anexosValidacao = FA.validar(lista, St.todos());
+      desenharAnexos();
+      atualizarStepper();
+    });
+  }
+
+  function desenharAnexos() {
+    var v = anexosValidacao;
+    var box = $('#anexoReqs');
+    if (!v || !box) return;
+
+    // resumo
+    var card = $('#cardAnexos');
+    card.classList.toggle('is-ok', v.ok);
+    card.innerHTML = '';
+    var ic = el('span', 'card__ic');
+    ic.innerHTML = v.ok
+      ? '<svg viewBox="0 0 24 24" width="24" height="24"><path d="m5 13 4 4 10-10" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+      : '<svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 8v5m0 3.5h.01M10.3 3.9 2.6 17.4A2 2 0 0 0 4.3 20.4h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    card.appendChild(ic);
+    var txt = el('div', 'card__txt');
+    if (v.ok) {
+      txt.appendChild(el('strong', '', 'Documentos completos'));
+      txt.appendChild(el('span', '', 'Tudo o que esta ficha exige foi anexado (' + v.total + (v.total === 1 ? ' arquivo, ' : ' arquivos, ') + FA.mb(v.tamanhoTotal) + ').'));
+    } else {
+      txt.appendChild(el('strong', '', v.faltando.length === 1 ? 'Falta 1 documento' : 'Faltam ' + v.faltando.length + ' documentos'));
+      txt.appendChild(el('span', '', v.faltando.map(function (it) { return it.req.rot; }).join(' · ')));
+    }
+    v.alertas.forEach(function (a) { txt.appendChild(el('span', 'card__alerta', a)); });
+    card.appendChild(txt);
+
+    // um bloco por documento exigido
+    box.innerHTML = '';
+    // documento não exigido com os dados preenchidos não aparece (só se já tiver anexo, para poder removê-lo)
+    v.itens.forEach(function (it) {
+      if (it.status === 'naoSeAplica' && !it.arquivos.length) return;
+      box.appendChild(blocoRequisito(it, v));
+    });
+
+    // anexos de documentos que a ficha não pede mais
+    var orf = $('#anexoOrfaos');
+    orf.innerHTML = '';
+    orf.hidden = !v.orfaos.length;
+    if (v.orfaos.length) {
+      orf.appendChild(el('p', 'anexo-req__tit', 'Anexos sem documento correspondente'));
+      orf.appendChild(el('p', 'anexo-req__dica', 'Mude o documento de cada um ou remova-os; eles não entram no envio como estão.'));
+      orf.appendChild(listaArquivos(v.orfaos, v));
+    }
+
+    desenharFormato();
+    var bEnv = $('#btnEnviarAnexos .acao__rot');
+    if (bEnv) bEnv.textContent = confirmarIncompleto ? 'Enviar mesmo assim'
+      : (Ex.podeCompartilharArquivos() ? 'Enviar ficha e documentos' : 'Baixar e abrir e-mail');
+  }
+
+  var ROTULO_STATUS = {
+    ok: 'Completo', falta: 'Falta', incompleto: 'Incompleto', opcional: 'Opcional', naoSeAplica: 'Não exigido'
+  };
+
+  function blocoRequisito(it, v) {
+    var b = el('div', 'anexo-req anexo-req--' + it.status);
+    b.id = 'anexo-' + it.req.k;
+    var cab = el('div', 'anexo-req__cab');
+    cab.appendChild(el('p', 'anexo-req__tit', it.req.rot));
+    cab.appendChild(el('span', 'anexo-status anexo-status--' + it.status, ROTULO_STATUS[it.status]));
+    b.appendChild(cab);
+    if (it.req.obs) b.appendChild(el('p', 'anexo-req__obs', it.req.obs));
+    if (it.req.dica) b.appendChild(el('p', 'anexo-req__dica', it.req.dica));
+    if (it.req.motivo) b.appendChild(el('p', 'anexo-req__dica', it.req.motivo));
+    b.appendChild(el('p', 'anexo-req__msg', it.mensagem));
+
+    if (it.arquivos.length) b.appendChild(listaArquivos(it.arquivos, v));
+
+    if (it.status !== 'naoSeAplica' || it.arquivos.length) {
+      var acoes = el('div', 'anexo-req__acoes');
+      var bFoto = el('button', 'btn btn--outline btn--sm');
+      bFoto.type = 'button';
+      bFoto.innerHTML = ICONE_CAMERA + '<span>Tirar foto</span>';
+      bFoto.addEventListener('click', function () { tirarFoto(it.req.k, it.req.rot); });
+      var bArq = el('button', 'btn btn--ghost btn--sm');
+      bArq.type = 'button';
+      bArq.innerHTML = ICONE_CLIPE + '<span>Anexar arquivo</span>';
+      bArq.addEventListener('click', function () { escolherArquivos(it.req.k, false); });
+      acoes.appendChild(bFoto);
+      acoes.appendChild(bArq);
+      b.appendChild(acoes);
+    }
+    return b;
+  }
+
+  function listaArquivos(arquivos, v) {
+    var ul = el('div', 'anexo-lista');
+    arquivos.forEach(function (a, i) {
+      var item = el('div', 'anexo' + (a.avisos && a.avisos.length ? ' anexo--aviso' : ''));
+      var mini = el('div', 'anexo__mini');
+      if (a.miniatura) {
+        var img = el('img');
+        img.src = a.miniatura;
+        img.alt = 'Anexo ' + (i + 1);
+        mini.appendChild(img);
+      } else {
+        mini.appendChild(el('span', 'anexo__pdf', 'PDF'));
+      }
+      item.appendChild(mini);
+
+      var info = el('div', 'anexo__info');
+      var desc = a.mime === 'application/pdf'
+        ? 'PDF' + (a.paginas ? ' · ' + a.paginas + (a.paginas === 1 ? ' página' : ' páginas') : '')
+        : 'Foto ' + (i + 1);
+      info.appendChild(el('span', 'anexo__nome', desc + ' · ' + FA.mb(a.tamanho || 0)));
+      (a.avisos || []).forEach(function (t) { info.appendChild(el('span', 'anexo__aviso', t)); });
+
+      // corrigir o documento ao qual o arquivo pertence
+      var sel = el('select', 'input input--sm anexo__tipo');
+      sel.setAttribute('aria-label', 'Documento deste anexo');
+      v.itens.forEach(function (it) {
+        var o = el('option', '', it.req.rot);
+        o.value = it.req.k;
+        if (it.req.k === a.tipo) o.selected = true;
+        sel.appendChild(o);
+      });
+      if (!v.itens.some(function (it) { return it.req.k === a.tipo; })) {
+        var o0 = el('option', '', 'Escolha o documento…');
+        o0.value = '';
+        o0.selected = true;
+        sel.insertBefore(o0, sel.firstChild);
+      }
+      sel.addEventListener('change', function () {
+        if (!sel.value) return;
+        FA.mudarTipo(a.id, sel.value).then(function () {
+          if (/^doc_/.test(sel.value)) St.set(sel.value, true);
+          return atualizarAnexos();
+        });
+      });
+      info.appendChild(sel);
+      item.appendChild(info);
+
+      var bx = el('button', 'icon-btn anexo__x');
+      bx.type = 'button';
+      bx.setAttribute('aria-label', 'Remover anexo');
+      bx.title = 'Remover';
+      bx.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      bx.addEventListener('click', function () { removerAnexo(a); });
+      item.appendChild(bx);
+      ul.appendChild(item);
+    });
+    return ul;
+  }
+
+  function primeiroProblema() {
+    var v = anexosValidacao;
+    if (!v || !v.faltando.length) return null;
+    return document.getElementById('anexo-' + v.faltando[0].req.k);
+  }
+
+  function destacar(alvo) {
+    if (!alvo) return;
+    alvo.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    alvo.classList.add('pisca');
+    setTimeout(function () { alvo.classList.remove('pisca'); }, 1400);
+  }
+
+  function validarAnexos() {
+    atualizarAnexos().then(function () {
+      var v = anexosValidacao;
+      if (v.ok) {
+        toast(v.alertas.length ? 'Documentos completos. Veja os avisos no resumo.' : 'Documentos completos: pode enviar.',
+          v.alertas.length ? 'aviso' : '');
+        $('#cardAnexos').scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } else {
+        toast(v.faltando.length === 1 ? 'Falta 1 documento: ' + v.faltando[0].req.rot + '.'
+          : 'Faltam ' + v.faltando.length + ' documentos.', 'aviso');
+        destacar(primeiroProblema());
+      }
+    });
+  }
+
+  /* Síncrono até o compartilhamento: usa a lista e a validação já calculadas. */
+  function enviarAnexos() {
+    var v = anexosValidacao;
+    if (!v || !anexosLista.length) {
+      toast('Anexe a ficha assinada e os documentos antes de enviar.', 'aviso');
+      destacar(primeiroProblema());
+      return;
+    }
+    if (!v.ok && !confirmarIncompleto) {
+      confirmarIncompleto = true;
+      desenharAnexos();
+      toast('Ainda faltam documentos. Toque de novo em "Enviar mesmo assim" para enviar assim.', 'aviso');
+      destacar(primeiroProblema());
+      return;
+    }
+    confirmarIncompleto = false;
+    var envio = anexosLista.filter(function (a) { return v.orfaos.indexOf(a) < 0; });
+    ocupado(true, 'Preparando anexos…');
+    Ex.enviarAnexos(envio, v, formatoEnvio)
+      .then(function (r) {
+        if (r && r.modo === 'download') toast(r.arquivos + (r.arquivos === 1 ? ' arquivo baixado' : ' arquivos baixados') + '. Anexe-os ao e-mail que será aberto.');
+        if (r && r.modo === 'nativo' && r.ignorados) toast(r.ignorados + ' PDF(s) anexado(s) não couberam no envio; envie-os à parte.', 'aviso');
+      })
+      .catch(function (e) {
+        if (e && e.name === 'AbortError') return;
+        toast('Não foi possível enviar daqui. Use "Baixar tudo em PDF" e anexe ao e-mail.', 'erro');
+      })
+      .then(function () { ocupado(false); desenharAnexos(); });
+  }
+
+  function baixarPacote() {
+    if (!anexosLista.length) {
+      toast('Nenhum documento anexado ainda.', 'aviso');
+      return;
+    }
+    var v = anexosValidacao;
+    var envio = anexosLista.filter(function (a) { return !v || v.orfaos.indexOf(a) < 0; });
+    var zip = formatoEnvio === 'zip';
+    ocupado(true, zip ? 'Compactando…' : 'Gerando PDF…');
+    Ex.baixarAnexos(envio, formatoEnvio)
+      .then(function (arqs) {
+        toast(arqs.length === 1 ? (zip ? 'Arquivo compactado: ' : 'PDF gerado: ') + arqs[0].nome : arqs.length + ' arquivos baixados.');
+      })
+      .catch(function () { toast(zip ? 'Falha ao compactar os documentos.' : 'Falha ao gerar o PDF dos documentos.', 'erro'); })
+      .then(function () { ocupado(false); });
+  }
+
   var ICONES = {
     pdf: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
     jpg: '<rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8.5" cy="10" r="1.5" fill="currentColor"/><path d="m4 17 5-5 4 4 3-2 4 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
     print: '<path d="M7 9V4h10v5M7 19h10v-5H7v5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M5 9h14a2 2 0 0 1 2 2v4h-4M7 15H3v-4a2 2 0 0 1 2-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
+    zip: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M11 3v2h2v2h-2v2h2v2h-2v2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="10" y="14" width="4" height="4" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+    check: '<path d="M9 12.5 11 14.5 15.5 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>',
     mail: '<rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m3.5 7 8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>'
   };
 
@@ -558,9 +1135,10 @@
     // "Baixar PDF" → "Entendi, baixar PDF": o botão diz o que vai acontecer.
     $('#envioOk').textContent = 'Entendi, ' + titulo.charAt(0).toLowerCase() + titulo.slice(1);
     $('#envioEmail').textContent = S.EMAIL_DESTINO;
-    $('#envioAssina').textContent = St.get('assinatura')
-      ? 'Você desenhou a assinatura no app — confira na pré-visualização se ela está legível.'
-      : 'Imprima e assine à mão, conforme o documento de identificação apresentado.';
+    $('#envioPasso').textContent = S.ficha.envioPasso;
+    $('#envioAlerta').textContent = S.ficha.envioAlerta;
+    $('#envioDocsBox').hidden = S.DOCUMENTOS.length === 0;
+    $('#envioTitle').textContent = S.ficha.envioTitulo;
     var lista = $('#envioDocs');
     lista.innerHTML = '';
     S.DOCUMENTOS.forEach(function (doc) {
@@ -658,7 +1236,6 @@
           }
           return;
         }
-        if (campo.tipo === 'assinatura') return;
 
         var vis = St.visivel(campo);
         box.hidden = !vis;
@@ -667,6 +1244,9 @@
         var entrada = document.getElementById('f-' + campo.k);
         if (campo.tipo === 'radio') {
           $$('.chip', box).forEach(function (c) { c.classList.toggle('is-on', c.dataset.v === d[campo.k]); });
+        } else if (campo.tipo === 'multipla') {
+          var marcados = Array.isArray(d[campo.k]) ? d[campo.k] : [];
+          $$('.check-row', box).forEach(function (b) { b.classList.toggle('is-on', marcados.indexOf(b.dataset.v) >= 0); });
         } else if (entrada && document.activeElement !== entrada) {
           var v = d[campo.k] == null ? '' : d[campo.k];
           if (entrada.value !== v) entrada.value = v;
@@ -688,6 +1268,7 @@
     atualizarStepper();
     atualizarRevisao();
     agendarPreview();
+    agendarAnexos();
   }
 
   function atualizarCategorias() {
@@ -728,6 +1309,11 @@
       if (i === stepAtual) b.setAttribute('aria-current', 'step');
       else b.removeAttribute('aria-current');
       var step = S.STEPS[i];
+      if (step.anexos) {
+        b.classList.toggle('tem-pend', !!anexosValidacao && !anexosValidacao.ok);
+        b.classList.toggle('esta-ok', !!anexosValidacao && anexosValidacao.ok);
+        return;
+      }
       var n = step.revisao ? 0 : St.pendenciasPorStep(step.id).length;
       b.classList.toggle('tem-pend', n > 0);
       b.classList.toggle('esta-ok', n === 0 && !step.revisao);
@@ -812,12 +1398,14 @@
     $('#btnPrev').disabled = i === 0;
     var prox = $('#btnNext');
     prox.hidden = i === S.STEPS.length - 1;
-    prox.textContent = i === S.STEPS.length - 2 ? 'Revisar' : 'Avançar';
+    var seguinte = S.STEPS[i + 1] || {};
+    prox.textContent = seguinte.revisao ? 'Revisar' : seguinte.anexos ? 'Documentos' : 'Avançar';
     window.scrollTo({ top: 0, behavior: 'smooth' });
     atualizarStepper();
     var ativo = $('.stepper__item.is-on');
     if (ativo && ativo.scrollIntoView) ativo.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
     if (S.STEPS[i].revisao) agendarPreview(true);
+    if (S.STEPS[i].anexos) atualizarAnexos();
   }
 
   /* Permite abrir direto numa etapa via #id — usado pelo atalho do manifest. */
@@ -886,10 +1474,48 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* ficha ativa                                                       */
+  /* ---------------------------------------------------------------- */
+  /* ?ficha=desligamento abre direto naquela ficha; sem isso, vale a última usada. */
+  function fichaInicial() {
+    var m = /[?&]ficha=([a-z]+)/.exec(location.search || '');
+    if (m && S.FICHAS[m[1]]) return m[1];
+    var salva = St.fichaSalva();
+    return S.FICHAS[salva] ? salva : 'filiacao';
+  }
+
+  function aplicarFicha() {
+    var f = S.ficha;
+    $('#brandTitulo').textContent = f.titulo;
+    $('#brandPublico').textContent = f.publicoBarra || f.publico;
+    document.title = f.titulo + ' — ABRAMUS';
+    $$('[data-ficha]').forEach(function (b) {
+      var ativa = b.dataset.ficha === f.id;
+      b.classList.toggle('is-on', ativa);
+      if (ativa) b.setAttribute('aria-current', 'true');
+      else b.removeAttribute('aria-current');
+    });
+  }
+
+  function trocarFicha(id) {
+    fecharSheets();
+    if (id === S.ficha.id) return;
+    St.usarFicha(id);
+    tocados = {};
+    stepAtual = 0;
+    construir();
+    if (!St.get('data_assinatura')) St.set('data_assinatura', St.hojeBR());
+    aplicarFicha();
+    irPara(0);
+    atualizar();
+    toast('Agora em: ' + S.ficha.titulo + ' — ' + (S.ficha.publicoBarra || S.ficha.publico) + '. O preenchimento de cada ficha fica salvo.');
+  }
+
+  /* ---------------------------------------------------------------- */
   /* inicialização                                                     */
   /* ---------------------------------------------------------------- */
   function iniciar() {
-    St.carregar();
+    St.usarFicha(fichaInicial());
     /* O salvamento é silencioso enquanto dá certo; só a falha interessa ao
        usuário, e uma vez basta — repetir o aviso a cada tecla seria ruído. */
     var avisouFalhaAoSalvar = false;
@@ -902,8 +1528,13 @@
 
     construir();
     if (!St.get('data_assinatura')) St.set('data_assinatura', St.hojeBR());
+    aplicarFicha();
     irPara(indiceDoHash());
     atualizar();
+
+    $$('[data-ficha]').forEach(function (b) {
+      b.addEventListener('click', function () { trocarFicha(b.dataset.ficha); });
+    });
 
     window.addEventListener('hashchange', function () { irPara(indiceDoHash()); });
 
@@ -927,17 +1558,21 @@
       toast('Formulário preenchido com dados de exemplo.');
     });
 
-    $('#miClear').addEventListener('click', function () {
+    // "Limpar formulário" está no menu e também no topo
+    function limparFormulario() {
       fecharSheets();
-      if (!confirm('Apagar todos os dados preenchidos neste aparelho?')) return;
+      if (!confirm('Apagar todos os dados preenchidos e os documentos anexados desta ficha?')) return;
       St.limpar();
+      FA.limpar();
       tocados = {};
       construir();
       St.set('data_assinatura', St.hojeBR());
       irPara(0);
       atualizar();
       toast('Formulário limpo.');
-    });
+    }
+    $('#miClear').addEventListener('click', limparFormulario);
+    $('#btnLimpar').addEventListener('click', limparFormulario);
 
     /* No APK não há o que instalar: o beforeinstallprompt nunca dispara no
        WebView e o item só confundiria quem já está com o app instalado.
@@ -977,14 +1612,6 @@
     });
 
     St.inscrever(function () { /* atualizações são disparadas pela UI */ });
-
-    window.addEventListener('resize', function () {
-      clearTimeout(window._rz);
-      window._rz = setTimeout(function () {
-        var cv = document.getElementById('f-assinatura');
-        if (cv && cv.parentNode && Math.abs(cv.clientWidth - cv.parentNode.clientWidth) > 4) iniciarPad(cv);
-      }, 300);
-    });
 
     if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
       return;

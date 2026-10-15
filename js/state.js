@@ -4,7 +4,8 @@
   'use strict';
 
   var S = global.FichaSchema;
-  var CHAVE = 'abramus.filiacao.v1';
+  // Cada ficha tem o próprio rascunho (S.ficha.chave); esta guarda qual está aberta.
+  var CHAVE_FICHA = 'abramus.ficha';
 
   var dados = {};
   var ouvintes = [];
@@ -134,7 +135,7 @@
           });
           return;
         }
-        if (campo.tipo === 'checklist' || campo.tipo === 'foto' || campo.tipo === 'assinatura') return;
+        if (campo.tipo === 'checklist' || campo.tipo === 'foto') return;
         if (!visivel(campo)) return;
         var erro = erroDoCampo(campo);
         if (erro) {
@@ -180,42 +181,229 @@
   var timerSalvar = null;
   var aoSalvar = function () {};
 
+  function gravar() {
+    timerSalvar = null;
+    try {
+      localStorage.setItem(S.ficha.chave, JSON.stringify(dados));
+      aoSalvar('salvo');
+    } catch (e) {
+      aoSalvar('erro');
+    }
+  }
+
   function salvar() {
     if (timerSalvar) clearTimeout(timerSalvar);
-    timerSalvar = setTimeout(function () {
-      try {
-        localStorage.setItem(CHAVE, JSON.stringify(dados));
-        aoSalvar('salvo');
-      } catch (e) {
-        aoSalvar('erro');
-      }
-    }, 250);
+    timerSalvar = setTimeout(gravar, 250);
+  }
+
+  function lerRascunho(chave) {
+    try {
+      var bruto = localStorage.getItem(chave);
+      return bruto ? (JSON.parse(bruto) || null) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   function carregar() {
-    try {
-      var bruto = localStorage.getItem(CHAVE);
-      if (bruto) dados = JSON.parse(bruto) || {};
-    } catch (e) {
-      dados = {};
+    var salvo = lerRascunho(S.ficha.chave);
+    dados = salvo || {};
+    // Ficha nova (sem rascunho) aproveita os dados comuns já digitados em outra.
+    var h = S.ficha.herdaDe;
+    if (!salvo && h) {
+      var origem = lerRascunho(S.FICHAS[h.ficha].chave) || {};
+      h.chaves.forEach(function (k) { if (!vazio(origem[k])) dados[k] = origem[k]; });
     }
     // Fichas salvas antes do modelo com três formas de pagamento só tinham o guichê.
     if (!dados.forma_pagamento && dados.guiche) dados.forma_pagamento = 'guiche';
     // A foto 3x4 deixou de ser coletada no app (vai anexada em papel); descarta a que ficou salva.
     delete dados.foto;
+    // A assinatura desenhada no app também saiu (a ficha é assinada à mão, impressa).
+    Object.keys(dados).forEach(function (k) { if (/^(h\d+_)?assinatura$/.test(k)) delete dados[k]; });
     return dados;
   }
 
   function limpar() {
+    if (timerSalvar) { clearTimeout(timerSalvar); timerSalvar = null; }
     dados = {};
-    try { localStorage.removeItem(CHAVE); } catch (e) {}
+    try { localStorage.removeItem(S.ficha.chave); } catch (e) {}
     notifica();
+  }
+
+  /* Sair do app descarta o preenchimento de todas as fichas, não só da aberta. */
+  function limparTudo() {
+    Object.keys(S.FICHAS).forEach(function (id) {
+      try { localStorage.removeItem(S.FICHAS[id].chave); } catch (e) {}
+    });
+    limpar();
+  }
+
+  /* ---------- ficha ativa ---------- */
+  function fichaSalva() {
+    try { return localStorage.getItem(CHAVE_FICHA) || ''; } catch (e) { return ''; }
+  }
+
+  function usarFicha(id) {
+    // Grava já o rascunho da ficha que sai: o salvamento com atraso cairia na chave da próxima.
+    if (timerSalvar) { clearTimeout(timerSalvar); gravar(); }
+    S.usar(id);
+    try { localStorage.setItem(CHAVE_FICHA, S.ficha.id); } catch (e) {}
+    return carregar();
   }
 
   /* Dados de demonstração: pessoa fictícia, sem qualquer vínculo com filiados
      ou com a ABRAMUS. CPF e telefones são números de teste; o domínio
      example.com é reservado pela RFC 2606 e não pertence a ninguém. */
+  var EXEMPLOS = {
+    desligamento: function () {
+      return {
+        sociedade_anterior: 'SOCIEDADE DE EXEMPLO',
+        nome: 'MARIA EXEMPLO DA SILVA',
+        pseudonimo: 'MARIA EXEMPLO',
+        cpf: '123.456.789-09',
+        categorias_desligamento: ['autor', 'interp'],
+        local_assinatura: 'São Paulo',
+        data_assinatura: hojeBR()
+      };
+    },
+    menor: function () {
+      return {
+        cat_autor: true, ter_autor: 'mundo',
+        cat_interp: true, ter_interp: 'brasil',
+        nome: 'JOANA EXEMPLO DA SILVA',
+        nascimento: '15/03/' + (new Date().getFullYear() - 14),
+        cpf: '123.456.789-09',
+        rg: '12.345.678-9',
+        rg_orgao: 'SSPSP',
+        resp_nome: 'ANA EXEMPLO DA SILVA',
+        resp_cpf: '987.654.321-00',
+        sexo: 'Feminino',
+        nacionalidade: 'BRASIL',
+        naturalidade: 'SÃO PAULO',
+        pai: 'JOÃO EXEMPLO DA SILVA',
+        mae: 'ANA EXEMPLO DA SILVA',
+        estado_civil: 'Solteiro(a)',
+        cep: '00000-000',
+        endereco: 'Rua de Exemplo',
+        numero: '100',
+        bairro: 'Bairro de Exemplo',
+        cidade: 'São Paulo',
+        uf: 'SP',
+        cel: '(11) 90000-0000',
+        email: 'ana.exemplo@example.com',
+        forma_pagamento: 'guiche',
+        guiche: 'SP',
+        local_assinatura: 'São Paulo',
+        data_assinatura: hojeBR(),
+        doc_ident: true, doc_resid: true
+      };
+    },
+    pj: function () {
+      return {
+        cat_produtor: true, ter_produtor: 'mundo',
+        cat_editor: true, ter_editor: 'brasil',
+        razao_social: 'EMPRESA DE EXEMPLO LTDA',
+        nome_fantasia: 'SELO EXEMPLO',
+        cnpj: '11.222.333/0001-81',
+        cep: '00000-000',
+        endereco: 'Rua de Exemplo',
+        numero: '100',
+        complemento: 'Sala 1',
+        bairro: 'Bairro de Exemplo',
+        cidade: 'São Paulo',
+        uf: 'SP',
+        tel: '(11) 0000-0000',
+        resp_nome: 'MARIA EXEMPLO DA SILVA',
+        resp_cpf: '123.456.789-09',
+        resp_nascimento: '15/03/1980',
+        resp_nacionalidade: 'BRASIL',
+        resp_naturalidade: 'SÃO PAULO',
+        resp_cel: '(11) 90000-0000',
+        resp_email: 'maria.exemplo@example.com',
+        contato1_nome: 'CARLOS EXEMPLO',
+        contato1_setor: 'FINANCEIRO',
+        contato1_email: 'financeiro@example.com',
+        email_sisrc: 'sisrc@example.com',
+        forma_pagamento: 'conta',
+        banco: 'BANCO DE EXEMPLO',
+        agencia: '0001',
+        conta_cidade: 'São Paulo',
+        conta_modalidade: 'Corrente',
+        conta_numero: '12345-6',
+        local_assinatura: 'São Paulo',
+        data_assinatura: hojeBR(),
+        doc_cnpj: true, doc_rep: true
+      };
+    },
+    herdeiro: function () {
+      return {
+        cat_autor: true, ter_autor: 'mundo',
+        cat_interp: true, ter_interp: 'mundo',
+        fal_nome: 'JOSÉ EXEMPLO DA SILVA',
+        fal_nascimento: '10/10/1940',
+        fal_falecimento: '25/06/2017',
+        fal_cpf: '987.654.321-00',
+        fal_sexo: 'Masculino',
+        fal_nacionalidade: 'BRASIL',
+        fal_naturalidade: 'SÃO PAULO',
+        fal_pseudonimo: 'ZÉ EXEMPLO',
+        nome: 'MARIA EXEMPLO DA SILVA',
+        rg: '12.345.678-9',
+        rg_orgao: 'SSPSP',
+        sexo: 'Feminino',
+        nacionalidade: 'BRASIL',
+        naturalidade: 'SÃO PAULO',
+        pai: 'JOSÉ EXEMPLO DA SILVA',
+        mae: 'ANA EXEMPLO DA SILVA',
+        estado_civil: 'Solteiro(a)',
+        cep: '00000-000',
+        endereco: 'Rua de Exemplo',
+        numero: '100',
+        bairro: 'Bairro de Exemplo',
+        cidade: 'São Paulo',
+        uf: 'SP',
+        cel: '(11) 90000-0000',
+        email: 'maria.exemplo@example.com',
+        qtd_herdeiros: '2',
+        h2_nome: 'PEDRO EXEMPLO DA SILVA',
+        h2_rg: '98.765.432-1',
+        h2_rg_orgao: 'SSPSP',
+        h2_sexo: 'Masculino',
+        h2_nacionalidade: 'BRASIL',
+        h2_naturalidade: 'SÃO PAULO',
+        h2_pai: 'JOSÉ EXEMPLO DA SILVA',
+        h2_mae: 'ANA EXEMPLO DA SILVA',
+        h2_estado_civil: 'Solteiro(a)',
+        h2_cep: '00000-000',
+        h2_endereco: 'Rua de Exemplo',
+        h2_numero: '200',
+        h2_bairro: 'Bairro de Exemplo',
+        h2_cidade: 'São Paulo',
+        h2_uf: 'SP',
+        h2_cel: '(11) 90000-0001',
+        h2_email: 'pedro.exemplo@example.com',
+        forma_pagamento: 'conta',
+        tipo_conta: 'Individual',
+        cpf_titular: '123.456.789-09',
+        banco: 'BANCO DE EXEMPLO',
+        agencia: '0001',
+        conta_cidade: 'São Paulo',
+        conta_modalidade: 'Corrente',
+        conta_numero: '12345-6',
+        local_assinatura: 'São Paulo',
+        data_assinatura: hojeBR(),
+        doc_ident: true, doc_obito: true
+      };
+    }
+  };
+
   function carregarExemplo() {
+    if (EXEMPLOS[S.ficha.id]) {
+      dados = EXEMPLOS[S.ficha.id]();
+      salvar();
+      notifica();
+      return;
+    }
     dados = {
       cat_autor: true, ter_autor: 'mundo',
       cat_interp: true, ter_interp: 'brasil',
@@ -275,7 +463,10 @@
     categoriasSelecionadas: categoriasSelecionadas,
     territorioTexto: territorioTexto,
     carregar: carregar,
+    usarFicha: usarFicha,
+    fichaSalva: fichaSalva,
     limpar: limpar,
+    limparTudo: limparTudo,
     carregarExemplo: carregarExemplo,
     hojeBR: hojeBR,
     definirCallbackSalvar: function (fn) { aoSalvar = fn; }
