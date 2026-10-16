@@ -426,14 +426,14 @@
     wrap.appendChild(cardPrev);
 
     var cardAcoes = el('div', 'card');
-    cardAcoes.appendChild(el('h2', 'card__title', 'Exportar e enviar'));
+    cardAcoes.appendChild(el('h2', 'card__title', 'Baixar para assinar'));
     var acoes = el('div', 'acoes');
 
     var nPag = S.ficha.paginas;
     var descPDF = nPag === 1 ? 'Documento completo em A4, 1 página.'
       : S.ficha.paginasExtras ? 'Ficha em A4, ' + nPag + ' páginas para cada herdeiro.'
       : 'Ficha completa em A4, ' + nPag + ' páginas.';
-    acoes.appendChild(botaoAcao('Baixar PDF', descPDF, 'pdf', function () {
+    acoes.appendChild(botaoAcao('Baixar para assinar (PDF)', descPDF, 'pdf', function () {
       ocupado(true, 'Gerando PDF…');
       Ex.baixarPDF()
         .then(function (a) { toast('PDF gerado: ' + a.nome); })
@@ -441,7 +441,7 @@
         .then(function () { ocupado(false); });
     }));
 
-    acoes.appendChild(botaoAcao('Baixar JPG', nPag === 1 ? 'Imagem da página, alta resolução.' : 'Uma imagem por página, alta resolução.', 'jpg', function () {
+    acoes.appendChild(botaoAcao('Baixar para assinar (JPG)', nPag === 1 ? 'Imagem da página, alta resolução.' : 'Uma imagem por página, alta resolução.', 'jpg', function () {
       ocupado(true, 'Gerando imagens…');
       Ex.baixarJPG()
         .then(function (arqs) { toast(arqs.length === 1 ? 'Imagem JPG gerada.' : arqs.length + ' imagens JPG geradas.'); })
@@ -449,26 +449,13 @@
         .then(function () { ocupado(false); });
     }));
 
-    acoes.appendChild(botaoAcao('Imprimir', 'Abre o diálogo de impressão do aparelho.', 'print', function () {
-      ocupado(true, 'Preparando impressão…');
-      Ex.imprimir()
-        .catch(function () { toast('Não foi possível preparar a impressão.', 'erro'); })
-        .then(function () { ocupado(false); });
-    }));
-
-    var podeShare = Ex.podeCompartilharArquivos();
-    acoes.appendChild(botaoAcao(
-      podeShare ? 'Enviar por e-mail' : 'Abrir e-mail',
-      podeShare ? 'Anexa o PDF e abre o app de e-mail.' : 'Abre o e-mail já preenchido. Anexe o PDF baixado.',
-      'mail',
-      function () { enviarPorEmail(podeShare); }
-    ));
-
+    cardAcoes.id = 'cardAcoes';
     cardAcoes.appendChild(acoes);
-    var nota = el('p', 'nota');
-    nota.innerHTML = 'Destinatário: <strong>' + S.EMAIL_DESTINO + '</strong>. ' +
-      'O envio usa o aplicativo de e-mail do seu aparelho — este app não transmite dados pela internet.';
-    cardAcoes.appendChild(nota);
+    var bloqueio = el('p', 'nota nota--bloqueio');
+    bloqueio.id = 'notaBloqueio';
+    cardAcoes.appendChild(bloqueio);
+    cardAcoes.appendChild(el('p', 'nota',
+      'Imprima, assine e anexe a ficha assinada na etapa Documentos, de onde ela é enviada com os demais documentos.'));
     wrap.appendChild(cardAcoes);
 
     return wrap;
@@ -1120,11 +1107,20 @@
     t.appendChild(el('span', 'acao__rot', titulo));
     t.appendChild(el('span', 'acao__desc', desc));
     b.appendChild(t);
-    b.addEventListener('click', function () { avisarAssinatura(fn, titulo); });
+    // Só baixa a ficha sem nenhuma pendência; com pendência, o toque leva à lista.
+    b.addEventListener('click', function () {
+      var n = St.pendencias().length;
+      if (n > 0) {
+        toast('Resolva ' + (n === 1 ? 'a pendência' : 'as ' + n + ' pendências') + ' antes de baixar a ficha para assinar.', 'aviso');
+        abrirPendencias();
+        return;
+      }
+      avisarAssinatura(fn, titulo);
+    });
     return b;
   }
 
-  /* Toda ação de "Exportar e enviar" passa por este aviso: a ficha só vale
+  /* Toda ação de "Baixar para assinar" passa por este aviso: a ficha só vale
      assinada e acompanhada dos documentos. A ação roda no clique de
      "continuar", ainda dentro do gesto do usuário — Web Share e a janela de
      impressão exigem isso. */
@@ -1155,31 +1151,6 @@
     acaoEnvioPendente = null;
     fecharSheets();
     if (fn) fn();
-  }
-
-  function enviarPorEmail(podeShare) {
-    var pend = St.pendencias();
-    if (pend.length > 0) {
-      toast(pend.length + ' campo(s) obrigatório(s) ainda pendente(s).', 'aviso');
-    }
-    if (podeShare) {
-      ocupado(true, 'Preparando anexo…');
-      Ex.compartilharPDF()
-        .catch(function (e) {
-          if (e && e.name === 'AbortError') return;
-          Ex.abrirEmail();
-        })
-        .then(function () { ocupado(false); });
-    } else {
-      ocupado(true, 'Gerando PDF…');
-      Ex.baixarPDF()
-        .then(function () {
-          toast('PDF baixado. Anexe-o ao e-mail que será aberto.');
-          setTimeout(Ex.abrirEmail, 900);
-        })
-        .catch(function () { Ex.abrirEmail(); })
-        .then(function () { ocupado(false); });
-    }
   }
 
   /* ---------- pré-visualização ---------- */
@@ -1331,7 +1302,7 @@
     if (pend.length === 0) {
       var ok = el('div', 'pend-ok');
       ok.innerHTML = '<svg viewBox="0 0 24 24" width="40" height="40"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m7.5 12.5 3 3 6-6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-        '<p><strong>Tudo preenchido.</strong></p><p>Nenhum campo obrigatório pendente. Você já pode exportar a ficha.</p>';
+        '<p><strong>Tudo preenchido.</strong></p><p>Nenhum campo obrigatório pendente. Você já pode baixar a ficha para assinar.</p>';
       lista.appendChild(ok);
       return;
     }
@@ -1365,6 +1336,21 @@
     var card = $('#cardPend');
     if (!card) return;
     var pend = St.pendencias();
+
+    // "Baixar para assinar" só com a ficha sem pendências
+    var bloqueado = pend.length > 0;
+    $$('#cardAcoes .acao').forEach(function (b) {
+      b.classList.toggle('is-bloqueado', bloqueado);
+      b.setAttribute('aria-disabled', bloqueado ? 'true' : 'false');
+    });
+    var nb = $('#notaBloqueio');
+    if (nb) {
+      nb.hidden = !bloqueado;
+      nb.textContent = bloqueado
+        ? 'Disponível quando não houver nenhuma pendência (' + pend.length + (pend.length === 1 ? ' restante).' : ' restantes).')
+        : '';
+    }
+
     card.classList.toggle('is-ok', pend.length === 0);
     card.innerHTML = '';
     var ic = el('span', 'card__ic');

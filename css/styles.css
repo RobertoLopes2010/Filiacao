@@ -837,6 +837,18 @@ select.input {
 .acao:active {
   transform: scale(0.99);
 }
+/* "Baixar para assinar" com pendências: continua clicável para abrir a lista */
+.acao.is-bloqueado {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.acao.is-bloqueado:hover {
+  border-color: var(--linha);
+  box-shadow: none;
+}
+.acao.is-bloqueado:active {
+  transform: none;
+}
 .acao__ic {
   width: 42px;
   height: 42px;
@@ -866,6 +878,10 @@ select.input {
   font-size: 12px;
   color: var(--tinta-3);
   line-height: 1.5;
+}
+.nota--bloqueio {
+  color: var(--marca-escura);
+  font-weight: 600;
 }
 .nota strong {
   color: var(--marca-escura);
