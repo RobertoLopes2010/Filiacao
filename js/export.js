@@ -184,10 +184,27 @@
     ].filter(function (l) { return l !== null; }).join('\n');
   }
 
+  function resumoResidencia(d) {
+    return [
+      S.ficha.tituloFicha,
+      '',
+      'Nome: ' + (d.nome || '—'),
+      'CPF: ' + (d.cpf || '—') + '   Documento de identidade: ' + (d.rg || '—') + ' ' + (d.rg_orgao || ''),
+      '',
+      'Endereço: ' + [d.endereco, d.numero, d.complemento].filter(Boolean).join(', '),
+      [d.bairro, d.cidade, d.uf].filter(Boolean).join(' - ') + '  CEP ' + (d.cep || '—'),
+      'Celular: ' + (d.cel || '—') + (d.tel ? '   Tel: ' + d.tel : ''),
+      'E-mail: ' + (d.email || '—'),
+      '',
+      'A declaração completa segue em anexo (PDF).'
+    ].join('\n');
+  }
+
   function resumoTexto() {
     var d = St.todos();
     var id = S.ficha.id;
     if (id === 'desligamento') return resumoDesligamento(d);
+    if (id === 'residencia') return resumoResidencia(d);
     var L = [];
     L.push(S.ficha.tituloFicha);
     L.push('');

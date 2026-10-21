@@ -205,15 +205,20 @@
     }
   }
 
-  function carregar() {
+  function carregar(semHeranca) {
     var salvo = lerRascunho(S.ficha.chave);
     dados = salvo || {};
     // Ficha nova (sem rascunho) aproveita os dados comuns já digitados em outra.
     var h = S.ficha.herdaDe;
-    if (!salvo && h) {
+    if (!salvo && h && !semHeranca) {
       var origem = lerRascunho(S.FICHAS[h.ficha].chave) || {};
       h.chaves.forEach(function (k) { if (!vazio(origem[k])) dados[k] = origem[k]; });
     }
+    // Categoria que a ficha deixou de oferecer (Editor saiu de PF, menor e herdeiro): descarta a marcação salva.
+    Object.keys(dados).forEach(function (k) {
+      var m = /^(cat|ter|terout)_(\w+)$/.exec(k);
+      if (m && !S.CATEGORIAS.some(function (c) { return c.k === m[2]; })) delete dados[k];
+    });
     // Fichas salvas antes do modelo com três formas de pagamento só tinham o guichê.
     if (!dados.forma_pagamento && dados.guiche) dados.forma_pagamento = 'guiche';
     // A foto 3x4 deixou de ser coletada no app (vai anexada em papel); descarta a que ficou salva.
@@ -243,12 +248,27 @@
     try { return localStorage.getItem(CHAVE_FICHA) || ''; } catch (e) { return ''; }
   }
 
-  function usarFicha(id) {
+  /* origem: ficha de onde se veio de propósito (ex.: o botão "Preencher declaração
+     de residência" da filiação). Os dados comuns dela (herdaDe) sobrescrevem os do
+     rascunho, que podem ser de outra pessoa; campos vazios na origem ficam como estão. */
+  function usarFicha(id, origem) {
     // Grava já o rascunho da ficha que sai: o salvamento com atraso cairia na chave da próxima.
     if (timerSalvar) { clearTimeout(timerSalvar); gravar(); }
     S.usar(id);
     try { localStorage.setItem(CHAVE_FICHA, S.ficha.id); } catch (e) {}
-    return carregar();
+    // vindo de uma ficha escolhida, a herança padrão (herdaDe.ficha) daria lugar a dados de outra pessoa
+    carregar(!!origem);
+    var h = S.ficha.herdaDe;
+    if (origem && h && S.FICHAS[origem]) {
+      var de = (h.de && h.de[origem]) || {};
+      var o = lerRascunho(S.FICHAS[origem].chave) || {};
+      h.chaves.forEach(function (k) {
+        var ko = k in de ? de[k] : k;
+        if (ko && !vazio(o[ko])) dados[k] = o[ko];
+      });
+      salvar();
+    }
+    return dados;
   }
 
   /* Dados de demonstração: pessoa fictícia, sem qualquer vínculo com filiados
@@ -262,6 +282,27 @@
         pseudonimo: 'MARIA EXEMPLO',
         cpf: '123.456.789-09',
         categorias_desligamento: ['autor', 'interp'],
+        local_assinatura: 'São Paulo',
+        data_assinatura: hojeBR()
+      };
+    },
+    residencia: function () {
+      return {
+        nome: 'MARIA EXEMPLO DA SILVA',
+        rg: '12.345.678-9',
+        rg_orgao: 'SSPSP',
+        cpf: '123.456.789-09',
+        nacionalidade: 'BRASIL',
+        naturalidade: 'SÃO PAULO',
+        cep: '00000-000',
+        endereco: 'Rua de Exemplo',
+        numero: '100',
+        complemento: 'Apto 12',
+        bairro: 'Bairro de Exemplo',
+        cidade: 'São Paulo',
+        uf: 'SP',
+        cel: '(11) 90000-0000',
+        email: 'maria.exemplo@example.com',
         local_assinatura: 'São Paulo',
         data_assinatura: hojeBR()
       };

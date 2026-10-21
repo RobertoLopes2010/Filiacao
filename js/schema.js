@@ -2,7 +2,8 @@
    - "Proposta de Filiação - Pessoa Física" (fichafiliacao_PF.pdf, páginas 1 e 2) e suas
      variações Menor de idade (fichafiliacao_PF_Menor.pdf), Pessoa Jurídica
      (fichafiliacao_PJ.pdf) e Herdeiro/Sucessor (fichafiliacao_Herdeiro.pdf);
-   - "Pedido de Desligamento - Pessoa Física" (Pedido de desligamento - pessoa física.pdf). */
+   - "Pedido de Desligamento - Pessoa Física" (Pedido de desligamento - pessoa física.pdf);
+   - "Declaração de Residência" (Declaração de residência ABRAMUS.pdf). */
 (function (global) {
   'use strict';
 
@@ -13,6 +14,9 @@
     { k: 'produtor', rot: 'Produtor Fonográfico' },
     { k: 'editor',   rot: 'Editor' }
   ];
+
+  /* Pessoa física (PF, menor e herdeiro) não se filia como Editor: só a PJ tem essa categoria. */
+  var CATEGORIAS_PF = CATEGORIAS.filter(function (c) { return c.k !== 'editor'; });
 
   var TERRITORIOS = [
     { v: 'mundo',  rot: 'Mundo' },
@@ -29,7 +33,8 @@
   var DOCUMENTOS = [
     { k: 'doc_carta',  rot: 'Carta de desligamento da sociedade anterior', obs: 'Caso exista.' },
     { k: 'doc_ident',  rot: 'Cópia de RG e CPF', obs: '' },
-    { k: 'doc_resid',  rot: 'Comprovante de residência', obs: '' },
+    // sem comprovante, vale a Declaração de Residência (ficha 'residencia'), preenchida no próprio app
+    { k: 'doc_resid',  rot: 'Comprovante de residência', obs: 'Ou declaração de residência.', alternativa: 'residencia' },
     { k: 'doc_cessao', rot: 'Cessão de direitos', obs: 'Caso opte pelo recebimento através de pessoa jurídica.' }
   ];
 
@@ -181,8 +186,8 @@
     },
     {
       id: 'pagamento',
-      titulo: 'Pagamento e documentos',
-      subtitulo: 'Forma de recebimento, declaração e checklist de anexos.',
+      titulo: 'Pagamento',
+      subtitulo: 'Forma de recebimento, local e data da assinatura.',
       campos: [
         { k: 'forma_pagamento', rotulo: 'Como deseja receber', tipo: 'radio', obrigatorio: true,
           dica: 'Preencha apenas uma das opções. Quem deseja receber em conta bancária de terceiros deve entrar em contato com a associação.',
@@ -218,8 +223,7 @@
         { k: 'pj_cidade', rotulo: 'Cidade da agência', tipo: 'texto', mostrarSe: porPJ, obrigatorioSe: porPJ },
 
         { k: 'local_assinatura', rotulo: 'Local da assinatura', tipo: 'texto', obrigatorio: true, largura: 'meio', dica: 'Cidade onde a ficha será assinada.' },
-        { k: 'data_assinatura', rotulo: 'Data da assinatura', tipo: 'data', obrigatorio: true, largura: 'meio', valida: validaData },
-        { k: '_documentos', rotulo: 'Documentos a serem anexados à proposta', tipo: 'checklist', itens: DOCUMENTOS }
+        { k: 'data_assinatura', rotulo: 'Data da assinatura', tipo: 'data', obrigatorio: true, largura: 'meio', valida: validaData }
       ]
     },
     {
@@ -234,8 +238,7 @@
   /* ---------- Pedido de desligamento — Pessoa Física ----------
      Espelha "Pedido de desligamento - pessoa física.pdf": carta de uma página
      à sociedade anterior. Sem o Editor, que a ficha não lista. */
-  var CATEGORIAS_DESLIGAMENTO = CATEGORIAS
-    .filter(function (c) { return c.k !== 'editor'; })
+  var CATEGORIAS_DESLIGAMENTO = CATEGORIAS_PF
     .map(function (c) { return { v: c.k, rot: c.rot }; });
 
   var STEPS_DESLIGAMENTO = [
@@ -276,6 +279,14 @@
       revisao: true,
       campos: []
     }
+  ];
+
+  /* ---------- Declaração de residência ----------
+     Espelha "Declaração de residência ABRAMUS.pdf": declaração de uma página
+     para quem não tem comprovante de residência. Os descritores vêm da Pessoa
+     Física (campoPF, mais abaixo), por isso as etapas são montadas depois dela. */
+  var DOCUMENTOS_RESIDENCIA = [
+    { k: 'doc_ident', rot: 'Documento de identidade do requerente', obs: 'Original e cópia.' }
   ];
 
   /* ---------- variações da Proposta de Filiação ----------
@@ -347,12 +358,9 @@
     STEPS[3],
     {
       id: 'pagamento',
-      titulo: 'Pagamento e documentos',
-      subtitulo: 'Forma de recebimento, declaração e checklist de anexos.',
-      campos: STEPS[4].campos.map(function (c) {
-        if (c.k === '_documentos') return campoPF('_documentos', { itens: DOCUMENTOS_MENOR });
-        return c;
-      })
+      titulo: 'Pagamento',
+      subtitulo: 'Forma de recebimento, local e data da assinatura.',
+      campos: STEPS[4].campos
     },
     REVISAO
   ];
@@ -437,15 +445,14 @@
     },
     {
       id: 'pagamento',
-      titulo: 'Pagamento e documentos',
-      subtitulo: 'Forma de recebimento, declaração e checklist de anexos.',
+      titulo: 'Pagamento',
+      subtitulo: 'Forma de recebimento, local e data da assinatura.',
       campos: [campoPF('forma_pagamento', { opcoes: FORMAS_PJ })]
         .concat(camposPF(CAMPOS_CONTA))
         .concat(camposPF(CAMPOS_GUICHE))
         .concat([
           campoPF('local_assinatura'),
-          campoPF('data_assinatura'),
-          campoPF('_documentos', { itens: DOCUMENTOS_PJ })
+          campoPF('data_assinatura')
         ])
     },
     REVISAO
@@ -459,7 +466,7 @@
     { k: 'doc_ident',    rot: 'Cópia de RG e CPF de cada herdeiro e do falecido', obs: '' },
     { k: 'doc_obito',    rot: 'Certidão de óbito e documento da sucessão',
       obs: 'Carta de inventariante, formal de partilha, carta de adjudicação ou alvará judicial.' },
-    { k: 'doc_resid',    rot: 'Comprovante de residência', obs: '' },
+    DOCUMENTOS[2],
     { k: 'doc_banco',    rot: 'Cópia de folha de cheque ou do cartão bancário', obs: 'Caso opte pelo pagamento através de DOC/TED.' }
   ];
 
@@ -577,16 +584,53 @@
     },
     {
       id: 'pagamento',
-      titulo: 'Pagamento e documentos',
-      subtitulo: 'Forma de recebimento, declaração e checklist de anexos.',
+      titulo: 'Pagamento',
+      subtitulo: 'Forma de recebimento, local e data da assinatura.',
       campos: STEPS[4].campos.map(function (c) {
         // A ficha do herdeiro não pede o CPF dele: o titular da conta precisa ser informado sempre.
         if (c.k === 'cpf_titular') return campoPF('cpf_titular', { dica: '', obrigatorioSe: porConta });
-        if (c.k === '_documentos') return campoPF('_documentos', { itens: DOCUMENTOS_HERDEIRO });
         return c;
       })
     },
     REVISAO
+  ];
+
+  var STEPS_RESIDENCIA = [
+    {
+      id: 'identificacao',
+      titulo: 'Identificação',
+      subtitulo: 'Quem declara a residência e assina a declaração.',
+      campos: [
+        campoPF('nome'),
+        campoPF('rg', { rotulo: 'Documento de identidade', dica: 'Número do RG ou de outro documento com foto.' }),
+        campoPF('rg_orgao'),
+        campoPF('cpf', { largura: null }),
+        campoPF('nacionalidade'),
+        campoPF('naturalidade')
+      ]
+    },
+    {
+      id: 'contato',
+      titulo: 'Endereço e contato',
+      subtitulo: 'O endereço onde você reside, que a declaração comprova.',
+      campos: camposPF(['cep', 'endereco', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'tel', 'cel', 'email'])
+    },
+    {
+      id: 'assinatura',
+      titulo: 'Local e data',
+      subtitulo: 'Onde e quando a declaração será assinada.',
+      campos: [
+        campoPF('local_assinatura', { dica: 'Cidade onde a declaração será assinada.' }),
+        campoPF('data_assinatura')
+      ]
+    },
+    {
+      id: 'revisao',
+      titulo: 'Revisão',
+      subtitulo: 'Confira a declaração preenchida e exporte.',
+      revisao: true,
+      campos: []
+    }
   ];
 
   /* ---------- anexos: o que cada ficha exige ----------
@@ -654,7 +698,7 @@
     var pags = paginasFicha(d);
     var lista = [{
       k: 'ficha_assinada',
-      rot: f.id === 'desligamento' ? 'Pedido assinado' : 'Ficha assinada',
+      rot: f.rotAssinada || 'Ficha assinada',
       obs: f.paginasExtras && nHerdeiros(d) > 1
         ? 'Uma ficha para cada herdeiro (' + nHerdeiros(d) + '), impressa e assinada à mão por ele, com todas as páginas.'
         : 'Impressa e assinada à mão, com todas as páginas.',
@@ -670,7 +714,7 @@
       if (r.exige === 'opcional') situacao = 'opcional';
       else if (typeof r.exige === 'function' && !r.exige(d)) situacao = 'naoSeAplica';
       var minimo = typeof r.minimo === 'function' ? r.minimo(d) : (r.minimo || 1);
-      lista.push({ k: doc.k, rot: doc.rot, obs: doc.obs, dica: r.dica || '', situacao: situacao,
+      lista.push({ k: doc.k, rot: doc.rot, obs: doc.obs, alternativa: doc.alternativa, dica: r.dica || '', situacao: situacao,
         minimo: minimo, motivo: situacao === 'obrigatorio' ? (r.motivo || '') : '' });
     });
     return lista;
@@ -701,6 +745,7 @@
       STEPS: STEPS,
       DOCUMENTOS: DOCUMENTOS,
       regrasAnexos: REGRAS_PF,
+      CATEGORIAS: CATEGORIAS_PF,
       email: 'filiacaoonline@abramus.org.br',
       envioTitulo: 'Assine a ficha antes de enviar',
       envioPasso: 'Assim que assinar, envie a ficha e os documentos obrigatórios',
@@ -717,6 +762,7 @@
       STEPS: STEPS_MENOR,
       DOCUMENTOS: DOCUMENTOS_MENOR,
       regrasAnexos: REGRAS_MENOR,
+      CATEGORIAS: CATEGORIAS_PF,
       email: 'filiacaoonline@abramus.org.br',
       envioTitulo: 'Assine a ficha antes de enviar',
       envioPasso: 'Assim que o responsável legal assinar, envie a ficha e os documentos obrigatórios',
@@ -754,6 +800,7 @@
       STEPS: STEPS_HERDEIRO,
       DOCUMENTOS: DOCUMENTOS_HERDEIRO,
       regrasAnexos: REGRAS_HERDEIRO,
+      CATEGORIAS: CATEGORIAS_PF,
       email: 'filiacaoonline@abramus.org.br',
       envioTitulo: 'Assine a ficha antes de enviar',
       envioPasso: 'Assim que assinar, envie a ficha e os documentos obrigatórios',
@@ -771,12 +818,35 @@
       paginas: 1,
       STEPS: STEPS_DESLIGAMENTO,
       DOCUMENTOS: [],
+      rotAssinada: 'Pedido assinado',
       email: 'filiacaoonline@abramus.org.br',
       // Quem pede o desligamento costuma estar se filiando: aproveita o que já foi digitado na filiação.
       herdaDe: { ficha: 'filiacao', chaves: ['nome', 'pseudonimo', 'cpf', 'local_assinatura'] },
       envioTitulo: 'Assine o pedido antes de enviar',
       envioPasso: 'Assim que assinar, envie o pedido',
       envioAlerta: 'O pedido só tem validade com a assinatura do titular.'
+    },
+    residencia: {
+      id: 'residencia',
+      titulo: 'Declaração de Residência',
+      tituloFicha: 'DECLARAÇÃO DE RESIDÊNCIA',
+      publico: 'Pessoa Física',
+      chave: 'abramus.residencia.v1',
+      arquivo: 'declaracao-residencia-abramus',
+      paginas: 1,
+      STEPS: STEPS_RESIDENCIA,
+      DOCUMENTOS: DOCUMENTOS_RESIDENCIA,
+      rotAssinada: 'Declaração assinada',
+      email: 'filiacaoonline@abramus.org.br',
+      // Substitui o comprovante de residência da filiação: aproveita o que já foi digitado lá.
+      // Aberta pelo botão do comprovante (PF, menor, herdeiro), copia da ficha de origem;
+      // no menor quem declara é o responsável legal (de: chave na origem; null = não copia).
+      herdaDe: { ficha: 'filiacao', chaves: ['nome', 'rg', 'rg_orgao', 'cpf', 'nacionalidade', 'naturalidade',
+        'cep', 'endereco', 'numero', 'complemento', 'bairro', 'cidade', 'uf', 'tel', 'cel', 'email', 'local_assinatura'],
+        de: { menor: { nome: 'resp_nome', cpf: 'resp_cpf', rg: null, rg_orgao: null, nacionalidade: null, naturalidade: null } } },
+      envioTitulo: 'Assine a declaração antes de enviar',
+      envioPasso: 'Assim que assinar, envie a declaração e o documento de identidade',
+      envioAlerta: 'A declaração só tem validade assinada e acompanhada do documento de identidade.'
     }
   };
 
@@ -808,7 +878,7 @@
     api.STEPS = f.STEPS;
     api.DOCUMENTOS = f.DOCUMENTOS;
     api.EMAIL_DESTINO = f.email;
-    // categorias da ficha ativa (a PJ só tem Produtor Fonográfico e Editor)
+    // categorias da ficha ativa (PF, menor e herdeiro sem Editor; a PJ só tem Produtor Fonográfico e Editor)
     api.CATEGORIAS = f.CATEGORIAS || CATEGORIAS;
     return f;
   }

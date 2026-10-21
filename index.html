@@ -9,7 +9,7 @@
     <meta name="theme-color" content="#008082" />
     <meta
       name="description"
-      content="Proposta de Filiação (Pessoa Física, Menor de idade, Pessoa Jurídica e Herdeiro/Sucessor) e Pedido de Desligamento ABRAMUS. Preenchimento, conferência e exportação 100% no dispositivo."
+      content="Proposta de Filiação (Pessoa Física, Menor de idade, Pessoa Jurídica e Herdeiro/Sucessor), Pedido de Desligamento e Declaração de Residência ABRAMUS. Preenchimento, conferência e exportação 100% no dispositivo."
     />
     <title>Proposta de Filiação — ABRAMUS</title>
     <link rel="manifest" href="manifest.webmanifest" />
@@ -69,6 +69,24 @@
                 stroke-linecap="round"
               />
             </svg>
+          </button>
+          <button
+            id="btnVoltarMenu"
+            class="icon-btn icon-btn--menu"
+            type="button"
+            aria-label="Retornar ao menu principal"
+            data-dica="Retornar ao menu principal"
+          >
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"
+                stroke="currentColor"
+                stroke-width="1.9"
+                fill="none"
+                stroke-linejoin="round"
+              />
+            </svg>
+            <span class="icon-btn__rot">Menu</span>
           </button>
           <button
             id="btnLimpar"
@@ -153,6 +171,130 @@
       </div>
     </div>
 
+    <!-- Tela inicial: escolha da ficha. Abre ao iniciar o app e pelo menu ⋮. -->
+    <section id="inicio" class="inicio" aria-labelledby="menuTitulo" hidden>
+      <div class="menu-topo inicio__topo">
+        <div class="inicio__topo-in">
+          <svg class="menu-topo__notas" viewBox="0 0 160 80" aria-hidden="true">
+            <path d="M40 58V18l26-6v40" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+            <ellipse cx="33" cy="58" rx="8" ry="6" fill="currentColor" />
+            <ellipse cx="59" cy="52" rx="8" ry="6" fill="currentColor" />
+            <path d="M118 50V14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" />
+            <ellipse cx="111" cy="50" rx="8" ry="6" fill="currentColor" />
+            <path d="M118 14c6 4 12 6 12 16" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" />
+          </svg>
+          <span class="menu-topo__logo">
+            <img src="icons/abramus-marca-branca.png" alt="" width="480" height="240" />
+          </span>
+          <div class="menu-topo__txt">
+            <h2 id="menuTitulo">Fichas ABRAMUS</h2>
+            <p>Escolha a ficha que deseja preencher</p>
+            <span class="menu-topo__pilula"><i aria-hidden="true"></i><span id="menuFichaAtual">Ficha aberta</span></span>
+          </div>
+        </div>
+        <!-- acabamento em onda: a parte de baixo recorta o cabeçalho com a cor
+             do fundo; a faixa acompanha a curva em #008082 translúcido -->
+        <svg class="inicio__onda" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true">
+          <path class="inicio__onda-fundo" d="M0 40C240 10 480 10 720 40S1200 70 1440 40V80H0Z" />
+          <path class="inicio__onda-faixa" d="M0 40C240 10 480 10 720 40S1200 70 1440 40V62C1200 92 960 92 720 62S240 32 0 62Z" />
+        </svg>
+        <div class="inicio__acoes">
+          <button id="inicioFinalizar" class="inicio__finalizar" type="button" aria-label="Finalizar a aplicação" data-dica="Finalizar a aplicação">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" />
+            </svg>
+            <span>Finalizar</span>
+          </button>
+        </div>
+      </div>
+      <div class="inicio__corpo">
+        <p class="menu-grupo">Escolha a ficha</p>
+        <div class="ficha-cards">
+          <button class="ficha-card" type="button" data-ficha="filiacao" aria-describedby="dica-filiacao">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 20.5a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Filiação</strong>
+              <span>Pessoa Física</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-filiacao" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Para autores, intérpretes, músicos e produtores maiores de 18 anos que se filiam à ABRAMUS em nome próprio.</span></span>
+          </button>
+          <button class="ficha-card" type="button" data-ficha="menor" aria-describedby="dica-menor">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M9 9.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3.5 20a5.5 5.5 0 0 1 11 0M17 13a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4ZM15 20a4 4 0 0 1 6.5-3.1" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Filiação</strong>
+              <span>Menor de idade</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-menor" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Para titulares com menos de 18 anos. O responsável legal assina a ficha e envia também os próprios documentos.</span></span>
+          </button>
+          <button class="ficha-card" type="button" data-ficha="pj" aria-describedby="dica-pj">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16M15 9h4a1 1 0 0 1 1 1v11M2.5 21h19M8 8h3M8 12h3M8 16h3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Filiação</strong>
+              <span>Pessoa Jurídica</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-pj" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Para empresas — editoras e produtoras fonográficas — que se filiam com CNPJ, representadas pelo responsável legal.</span></span>
+          </button>
+          <button class="ficha-card" type="button" data-ficha="herdeiro" aria-describedby="dica-herdeiro">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M8 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM2 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M18 20h4a5.5 5.5 0 0 0-4-5.3" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Filiação</strong>
+              <span>Herdeiro / Sucessor</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-herdeiro" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Para herdeiros ou sucessores de um titular falecido. Aceita até 6 herdeiros, com uma ficha para cada um.</span></span>
+          </button>
+          <button class="ficha-card" type="button" data-ficha="desligamento" aria-describedby="dica-desligamento">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M9 16l-4-4 4-4M5 12h10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Desligamento</strong>
+              <span>Pedido à sociedade anterior</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-desligamento" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Carta à sociedade de onde você vem, pedindo o desligamento para transferir a gestão dos seus direitos à ABRAMUS.</span></span>
+          </button>
+          <button class="ficha-card" type="button" data-ficha="residencia" aria-describedby="dica-residencia">
+            <span class="ficha-card__icone"><svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M5.5 9.5V20h13V9.5M10 20v-5.5h4V20" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <span class="ficha-card__txt">
+              <strong>Declaração</strong>
+              <span>Comprovação de residência</span>
+            </span>
+            <span class="ficha-card__marca">Atual</span>
+            <span class="ficha-card__dica" id="dica-residencia" role="tooltip"><span class="ficha-card__dica-tit" aria-hidden="true">Sobre esta ficha</span><span class="ficha-card__dica-txt">Para quem não tem comprovante de residência em nome próprio: você declara o endereço onde mora, sob as penas da Lei.</span></span>
+          </button>
+        </div>
+        <!-- documentos que cada ficha pede; montado por montarDocsInicio() (app.js) -->
+        <section class="docs-inicio" id="docsInicio" aria-labelledby="docsInicioTit">
+          <div class="docs-inicio__cab">
+            <span class="docs-inicio__icone" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 13l2 2 4-4" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+            <div class="docs-inicio__tit">
+              <p class="docs-inicio__sobre">Documentos necessários</p>
+              <h3 id="docsInicioTit">Filiação — Pessoa Física</h3>
+            </div>
+            <span class="docs-inicio__resumo" id="docsInicioResumo"></span>
+          </div>
+          <div class="docs-inicio__abas" id="docsInicioAbas" role="tablist" aria-label="Ver os documentos da ficha"></div>
+          <ul class="docs-inicio__lista" id="docsInicioLista" role="tabpanel" aria-labelledby="docsInicioTit" aria-live="polite"></ul>
+          <p class="docs-inicio__nota">
+            Depois de imprimir e assinar, você fotografa ou anexa cada item na
+            etapa Documentos, e o app confere se está tudo lá.
+          </p>
+        </section>
+        <p class="menu-note">
+          Nenhum dado sai deste aparelho. O preenchimento de cada ficha fica
+          salvo e pode ser retomado depois.
+        </p>
+      </div>
+      <footer class="inicio__rodape">
+        <p>
+          © <span id="anoCopyright">2026</span> ABRAMUS — Associação Brasileira
+          de Música e Artes. Todos os direitos reservados.
+        </p>
+      </footer>
+    </section>
+
     <div id="menuSheet" class="sheet" hidden>
       <div class="sheet__backdrop" data-close-sheet></div>
       <div
@@ -163,71 +305,17 @@
       >
         <div class="sheet__grip"></div>
         <div class="sheet__body">
-          <p class="menu-grupo">Ficha</p>
-          <button class="menu-item menu-item--ficha" type="button" data-ficha="filiacao">
+          <button class="menu-item" type="button" id="miInicio">
             <svg viewBox="0 0 24 24" width="20" height="20">
               <path
-                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
+                d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"
                 stroke="currentColor"
                 stroke-width="1.8"
                 fill="none"
-                stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
-            Filiação — Pessoa Física
-          </button>
-          <button class="menu-item menu-item--ficha" type="button" data-ficha="menor">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path
-                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Filiação — Menor de idade
-          </button>
-          <button class="menu-item menu-item--ficha" type="button" data-ficha="pj">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path
-                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Filiação — Pessoa Jurídica
-          </button>
-          <button class="menu-item menu-item--ficha" type="button" data-ficha="herdeiro">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path
-                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M12 11v6M9 14h6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Filiação — Herdeiro / Sucessor
-          </button>
-          <button class="menu-item menu-item--ficha" type="button" data-ficha="desligamento">
-            <svg viewBox="0 0 24 24" width="20" height="20">
-              <path
-                d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5ZM14 3v5h5M9 14h6"
-                stroke="currentColor"
-                stroke-width="1.8"
-                fill="none"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            Pedido de Desligamento
+            Escolher outra ficha
           </button>
           <hr class="menu-sep" />
           <button class="menu-item" type="button" id="miInstall">

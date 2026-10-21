@@ -50,7 +50,15 @@
     St.set('data_assinatura', St.hojeBR());
     irPara(0);
     atualizar();
-    if (emAppNativo() && global.FichaAndroid.sair) global.FichaAndroid.sair();
+    if (emAppNativo() && global.FichaAndroid.sair) { global.FichaAndroid.sair(); return; }
+    /* No navegador a aba não é nossa para fechar (close() só funciona em
+       janela aberta por script, como a da PWA instalada no desktop). Se
+       continuar aberta, volta à tela inicial já sem dados. */
+    try { global.close(); } catch (e) { /* segue para a tela inicial */ }
+    fichaEscolhida = false;
+    aplicarFicha();
+    abrirInicio(false);
+    toast('Aplicação finalizada. Os dados preenchidos foram apagados deste aparelho.');
   }
 
   var timerPreview = null;
@@ -951,7 +959,27 @@
       acoes.appendChild(bArq);
       b.appendChild(acoes);
     }
+    if (it.req.alternativa && S.FICHAS[it.req.alternativa]) b.appendChild(blocoAlternativa(it.req.alternativa));
     return b;
+  }
+
+  /* Documento que pode ser trocado por outra ficha do app (comprovante de
+     residência → Declaração de Residência): abre essa ficha já com os dados
+     desta; a declaração assinada volta para cá como anexo do documento. */
+  function blocoAlternativa(id) {
+    var f = S.FICHAS[id], origem = S.ficha;
+    var alt = el('div', 'anexo-req__alt');
+    alt.appendChild(el('p', 'anexo-req__dica', 'Não tem comprovante em seu nome? Preencha a ' + f.titulo.toLowerCase() +
+      ', imprima, assine e anexe aqui a foto ou o PDF dela.'));
+    var bAlt = el('button', 'btn btn--outline btn--sm');
+    bAlt.type = 'button';
+    bAlt.textContent = 'Preencher ' + f.titulo.toLowerCase();
+    bAlt.addEventListener('click', function () {
+      trocarFicha(id, origem.id);
+      toast('Dados copiados de ' + origem.titulo + ' — ' + origem.publico + '. Depois de assinar, volte pelo Menu e anexe a declaração.');
+    });
+    alt.appendChild(bAlt);
+    return alt;
   }
 
   function listaArquivos(arquivos, v) {
@@ -1381,7 +1409,10 @@
     if (i < 0 || i >= S.STEPS.length) return;
     stepAtual = i;
     $$('.step').forEach(function (s) { s.hidden = parseInt(s.dataset.index, 10) !== i; });
-    $('#btnPrev').disabled = i === 0;
+    // na primeira etapa o Voltar leva ao menu principal (tela inicial)
+    var ant = $('#btnPrev');
+    ant.title = i === 0 ? 'Retornar ao menu principal' : '';
+    ant.setAttribute('aria-label', i === 0 ? 'Voltar: retornar ao menu principal' : 'Voltar');
     var prox = $('#btnNext');
     prox.hidden = i === S.STEPS.length - 1;
     var seguinte = S.STEPS[i + 1] || {};
@@ -1470,23 +1501,48 @@
     return S.FICHAS[salva] ? salva : 'filiacao';
   }
 
+  /* A tela inicial só aponta uma ficha como "Atual" (card e pílula "Em
+     andamento") depois que ela foi escolhida nesta sessão — ao abrir o app,
+     a última ficha usada fica carregada, mas nenhum card aparece marcado. */
+  var fichaEscolhida = false;
+
   function aplicarFicha() {
     var f = S.ficha;
     $('#brandTitulo').textContent = f.titulo;
     $('#brandPublico').textContent = f.publicoBarra || f.publico;
     document.title = f.titulo + ' — ABRAMUS';
+    $('#menuFichaAtual').textContent = 'Em andamento: ' + f.titulo;
+    $('#menuFichaAtual').parentNode.hidden = !fichaEscolhida;
     $$('[data-ficha]').forEach(function (b) {
-      var ativa = b.dataset.ficha === f.id;
+      var ativa = fichaEscolhida && b.dataset.ficha === f.id;
       b.classList.toggle('is-on', ativa);
       if (ativa) b.setAttribute('aria-current', 'true');
       else b.removeAttribute('aria-current');
     });
   }
 
-  function trocarFicha(id) {
+  /* Tela inicial: escolha da ficha (sempre por um card; o da ficha atual
+     continua de onde parou). Aberta pelo botão Menu, o Esc volta à ficha. */
+  var inicioVoltavel = false;
+  function abrirInicio(voltavel) {
+    var t = $('#inicio');
+    inicioVoltavel = !!voltavel;
+    t.hidden = false;
+    t.scrollTop = 0;
+    if (fichaEscolhida) mostrarDocsInicio(S.ficha.id);
+  }
+
+  function fecharInicio() {
+    $('#inicio').hidden = true;
+  }
+
+  /* origem: ficha de onde se veio (ex.: filiação → declaração de residência),
+     cujos dados comuns preenchem a nova. */
+  function trocarFicha(id, origem) {
     fecharSheets();
+    if (!fichaEscolhida) { fichaEscolhida = true; aplicarFicha(); }
     if (id === S.ficha.id) return;
-    St.usarFicha(id);
+    St.usarFicha(id, origem);
     tocados = {};
     stepAtual = 0;
     construir();
@@ -1495,6 +1551,100 @@
     irPara(0);
     atualizar();
     toast('Agora em: ' + S.ficha.titulo + ' — ' + (S.ficha.publicoBarra || S.ficha.publico) + '. O preenchimento de cada ficha fica salvo.');
+  }
+
+  /* Tela inicial: painel com os documentos que cada ficha pede. Mostra a ficha
+     do card sob o mouse (ou em foco) e tem abas para o toque, onde não há hover.
+     Lê DOCUMENTOS e regrasAnexos de cada ficha; a ficha assinada vem sempre primeiro. */
+  var docsInicioId = null;
+
+  function nomeCard(id) {
+    var c = $('.ficha-card[data-ficha="' + id + '"]');
+    var tipo = c.querySelector('.ficha-card__txt strong').textContent;
+    var sub = c.querySelector('.ficha-card__txt span').textContent;
+    return { titulo: tipo + ' — ' + sub, aba: tipo === 'Filiação' ? sub : tipo };
+  }
+
+  function documentosDaFicha(f) {
+    var regras = f.regrasAnexos || {};
+    var lista = [{
+      rot: f.rotAssinada || 'Ficha assinada',
+      obs: f.paginasExtras ? 'Uma ficha para cada herdeiro, impressa e assinada à mão por ele.'
+        : 'Impressa e assinada à mão, com todas as páginas.',
+      situacao: 'obrigatorio', assinada: true
+    }];
+    f.DOCUMENTOS.forEach(function (doc) {
+      var r = regras[doc.k] || {};
+      lista.push({
+        rot: doc.rot, obs: doc.obs, dica: r.dica || '',
+        situacao: r.exige === 'opcional' ? 'opcional' : (typeof r.exige === 'function' ? 'caso' : 'obrigatorio')
+      });
+    });
+    return lista;
+  }
+
+  var SITUACAO_DOC = { obrigatorio: 'Obrigatório', caso: 'Conforme o caso', opcional: 'Opcional' };
+
+  function mostrarDocsInicio(id) {
+    if (!S.FICHAS[id] || id === docsInicioId) return;
+    docsInicioId = id;
+    var docs = documentosDaFicha(S.FICHAS[id]);
+    $('#docsInicioTit').textContent = nomeCard(id).titulo;
+    var obrig = docs.filter(function (d) { return d.situacao === 'obrigatorio'; }).length;
+    $('#docsInicioResumo').textContent = obrig + (obrig === 1 ? ' obrigatório' : ' obrigatórios') + ' · ' + docs.length + ' no total';
+    $$('#docsInicioAbas [data-docs]').forEach(function (b) {
+      var on = b.dataset.docs === id;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      b.tabIndex = on ? 0 : -1;
+      // no celular as abas rolam na horizontal: centraliza a escolhida
+      var trilho = b.parentNode;
+      if (on && trilho.scrollWidth > trilho.clientWidth) {
+        trilho.scrollLeft = b.offsetLeft - trilho.offsetLeft - (trilho.clientWidth - b.offsetWidth) / 2;
+      }
+    });
+    var ul = $('#docsInicioLista');
+    ul.textContent = '';
+    docs.forEach(function (d, i) {
+      var li = el('li', 'doc-inicio doc-inicio--' + d.situacao + (d.assinada ? ' doc-inicio--assinada' : ''));
+      li.appendChild(el('span', 'doc-inicio__n', String(i + 1)));
+      var txt = el('span', 'doc-inicio__txt');
+      txt.appendChild(el('span', 'doc-inicio__selo', SITUACAO_DOC[d.situacao]));
+      txt.appendChild(el('strong', null, d.rot));
+      if (d.obs) txt.appendChild(el('span', null, d.obs));
+      if (d.dica) txt.appendChild(el('em', null, d.dica));
+      li.appendChild(txt);
+      ul.appendChild(li);
+    });
+  }
+
+  function montarDocsInicio() {
+    var abas = $('#docsInicioAbas');
+    $$('.ficha-card[data-ficha]').forEach(function (c) {
+      var id = c.dataset.ficha;
+      var b = el('button', 'docs-inicio__aba', nomeCard(id).aba);
+      b.type = 'button';
+      b.dataset.docs = id;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-controls', 'docsInicioLista');
+      b.addEventListener('click', function () { mostrarDocsInicio(id); });
+      abas.appendChild(b);
+      // passar o mouse ou focar o card (quando aparece o balão "Sobre esta ficha") troca o painel
+      c.addEventListener('mouseenter', function () { mostrarDocsInicio(id); });
+      c.addEventListener('focus', function () { mostrarDocsInicio(id); });
+    });
+    // setas trocam de aba (padrão de tablist)
+    abas.addEventListener('keydown', function (e) {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      var bs = $$('#docsInicioAbas [data-docs]');
+      var i = 0;
+      bs.forEach(function (b, j) { if (b.dataset.docs === docsInicioId) i = j; });
+      var prox = bs[(i + (e.key === 'ArrowRight' ? 1 : bs.length - 1)) % bs.length];
+      mostrarDocsInicio(prox.dataset.docs);
+      prox.focus();
+      e.preventDefault();
+    });
+    mostrarDocsInicio(S.ficha.id);
   }
 
   /* ---------------------------------------------------------------- */
@@ -1518,13 +1668,51 @@
     irPara(indiceDoHash());
     atualizar();
 
+    /* Toque não tem hover: o card ganha o mesmo efeito (.is-tocado) ao ser
+       tocado e a ficha abre logo depois, para o efeito chegar a ser visto.
+       Rolar a tela (pointercancel) desfaz o efeito sem abrir nada. */
+    var abrindoFicha = false;
     $$('[data-ficha]').forEach(function (b) {
-      b.addEventListener('click', function () { trocarFicha(b.dataset.ficha); });
+      var porToque = false;
+      b.addEventListener('pointerdown', function (e) {
+        porToque = e.pointerType !== 'mouse';
+        if (porToque) b.classList.add('is-tocado');
+      });
+      ['pointercancel', 'pointerleave'].forEach(function (ev) {
+        b.addEventListener(ev, function () { if (!abrindoFicha) b.classList.remove('is-tocado'); });
+      });
+      b.addEventListener('click', function () {
+        if (abrindoFicha) return;
+        function abrir() {
+          abrindoFicha = false;
+          b.classList.remove('is-tocado');
+          fecharInicio();
+          trocarFicha(b.dataset.ficha);
+        }
+        if (!porToque) { abrir(); return; }
+        abrindoFicha = true;
+        b.classList.add('is-tocado');
+        setTimeout(abrir, 260);
+      });
+    });
+    /* ?ficha=<id> é um link direto para a ficha: pula a tela inicial (e conta como escolhida). */
+    if (/[?&]ficha=/.test(location.search || '')) { fichaEscolhida = true; aplicarFicha(); }
+    else abrirInicio(false);
+    montarDocsInicio();
+    $('#inicioFinalizar').addEventListener('click', pedirSaida);
+    $('#anoCopyright').textContent = String(new Date().getFullYear());
+    $('#btnVoltarMenu').addEventListener('click', function () { abrirInicio(true); });
+    $('#miInicio').addEventListener('click', function () {
+      fecharSheets();
+      abrirInicio(true);
     });
 
     window.addEventListener('hashchange', function () { irPara(indiceDoHash()); });
 
-    $('#btnPrev').addEventListener('click', function () { irPara(stepAtual - 1); });
+    $('#btnPrev').addEventListener('click', function () {
+      if (stepAtual === 0) abrirInicio(true);
+      else irPara(stepAtual - 1);
+    });
     $('#btnNext').addEventListener('click', avancar);
     $('#btnPending').addEventListener('click', abrirPendencias);
     $('#btnMenu').addEventListener('click', function () {
@@ -1532,7 +1720,11 @@
       abrirSheet('menuSheet');
     });
     $$('[data-close-sheet]').forEach(function (b) { b.addEventListener('click', fecharSheets); });
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fecharSheets(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      if (!$('#inicio').hidden && inicioVoltavel && !$('.sheet:not([hidden])')) fecharInicio();
+      fecharSheets();
+    });
 
     $('#miDemo').addEventListener('click', function () {
       fecharSheets();

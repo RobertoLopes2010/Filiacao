@@ -164,9 +164,28 @@ button {
     font-size: 13px;
   }
 }
+/* Com três botões no topo (Menu, Limpar, ⋮), o título precisa do espaço. */
+@media (max-width: 420px) {
+  .app-bar__inner {
+    gap: 8px;
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  .app-bar__actions {
+    gap: 4px;
+  }
+  .app-bar__logo {
+    height: 42px;
+  }
+  .app-bar__actions .icon-btn {
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+  }
+}
 @media (max-width: 370px) {
   .app-bar__logo {
-    height: 40px;
+    height: 36px;
   }
 }
 
@@ -211,12 +230,92 @@ button {
   color: #fff;
   background: #8e1b1b;
 }
+/* "Voltar ao menu" no topo: branco translúcido; no hover sobe um pouco,
+   clareia e mostra o balão "Retornar ao menu principal" (data-dica). */
+.icon-btn--menu {
+  position: relative;
+  width: auto;
+  min-width: 38px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  transition: background 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.icon-btn--menu:hover,
+.icon-btn--menu:focus-visible {
+  color: var(--marca-escura);
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(0, 60, 61, 0.3);
+  transform: translateY(-1px);
+  outline: none;
+}
+.icon-btn--menu:active {
+  transform: scale(0.96);
+}
+.icon-btn--menu::after {
+  content: attr(data-dica);
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  z-index: 5;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--tinta);
+  box-shadow: 0 6px 18px rgba(16, 35, 31, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.18s, transform 0.18s, visibility 0s 0.18s;
+  pointer-events: none;
+}
+.icon-btn--menu::before {
+  content: "";
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 50%;
+  z-index: 5;
+  border: 5px solid transparent;
+  border-top: 0;
+  border-bottom-color: var(--tinta);
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, -4px);
+  transition: opacity 0.18s, transform 0.18s, visibility 0s 0.18s;
+  pointer-events: none;
+}
+.icon-btn--menu:hover::after,
+.icon-btn--menu:hover::before,
+.icon-btn--menu:focus-visible::after,
+.icon-btn--menu:focus-visible::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+  transition: opacity 0.18s 0.1s, transform 0.18s 0.1s;
+}
+@media (hover: none) {
+  .icon-btn--menu::after,
+  .icon-btn--menu::before {
+    display: none;
+  }
+}
 /* Telas estreitas: só o ícone, para não espremer o título. */
 @media (max-width: 480px) {
   .icon-btn__rot {
     display: none;
   }
-  .icon-btn--limpar {
+  .icon-btn--limpar,
+  .icon-btn--menu {
     padding: 0;
     justify-content: center;
   }
@@ -988,6 +1087,15 @@ select.input {
   align-items: center;
   gap: 6px;
 }
+/* alternativa ao documento (comprovante → declaração de residência) */
+.anexo-req__alt {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--linha-2);
+}
+.anexo-req__alt .btn {
+  margin-top: 8px;
+}
 .anexo-lista {
   display: flex;
   flex-direction: column;
@@ -1700,18 +1808,779 @@ select.input {
   text-transform: uppercase;
   color: var(--tinta-3);
 }
-.menu-item--ficha.is-on {
-  background: var(--marca-clara);
+.menu-grupo--opcoes {
+  margin-top: 18px;
+}
+
+/* ---------- tela inicial: cabeçalho e cards das fichas ---------- */
+/* Cobre a barra e o formulário (abaixo dos sheets, que ficam em z-index 60). */
+.inicio {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  background: var(--fundo);
+  animation: inicio-entra 0.24s ease-out;
+}
+/* "display: flex" acima sobreporia o atributo hidden sem a regra global
+   [hidden] { display: none !important }. */
+@keyframes inicio-entra {
+  from { opacity: 0; }
+}
+.menu-topo.inicio__topo {
+  display: block;
+  padding: calc(var(--topo) + 32px) 20px 40px;
+  border-radius: 0;
+  overflow: visible;
+}
+.inicio__topo-in {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  max-width: 960px;
+  margin: 0 auto;
+}
+.inicio__topo .menu-topo__txt {
+  flex: 1;
+}
+.inicio__topo .menu-topo__notas {
+  right: 0;
+  width: 200px;
+}
+/* Na tela inicial, só a marca, sem o quadro, a 50% de opacidade e com sombra
+   branca. A arte é branca a 70%: as duas sombras sem desfoque a deixam quase
+   opaca antes de a opacidade de 50% ser aplicada. */
+.inicio__topo .menu-topo__logo {
+  width: auto;
+  height: auto;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.inicio__topo .menu-topo__logo img {
+  width: 170px;
+  opacity: 0.5;
+  filter:
+    drop-shadow(0 0 0 #fff)
+    drop-shadow(0 0 0 #fff)
+    drop-shadow(0 0 12px #ffffff);
+}
+.inicio__topo .menu-topo__txt h2 {
+  font-size: 28px;
+}
+.inicio__topo .menu-topo__txt p {
+  font-size: 15px;
+}
+/* Finalizar no canto do cabeçalho */
+.inicio__acoes {
+  position: absolute;
+  top: calc(var(--topo) + 14px);
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.inicio__acoes .inicio__finalizar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
+}
+.inicio__finalizar:hover,
+.inicio__finalizar:focus-visible {
+  color: #fff;
+  background: #b22222;
+  box-shadow: 0 6px 16px rgba(120, 20, 20, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  transform: translateY(-1px);
+  outline: none;
+}
+.inicio__finalizar:active {
+  transform: scale(0.96);
+  background: #8e1b1b;
+}
+.inicio__finalizar::after {
+  content: attr(data-dica);
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  padding: 7px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #fff;
+  background: var(--tinta);
+  box-shadow: 0 6px 18px rgba(16, 35, 31, 0.25);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.18s, transform 0.18s, visibility 0s 0.18s;
+  pointer-events: none;
+}
+.inicio__finalizar:hover::after,
+.inicio__finalizar:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.18s 0.1s, transform 0.18s 0.1s;
+}
+@media (hover: none) {
+  .inicio__finalizar::after {
+    display: none;
+  }
+}
+.inicio__rodape {
+  flex: 0 0 auto;
+  margin-top: auto;
+  padding: 16px 20px calc(var(--baixo) + 16px);
+  border-top: 1px solid var(--linha);
+  background: var(--branco);
+  text-align: center;
+}
+.inicio__rodape p {
+  max-width: 960px;
+  margin: 0 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--tinta-3);
+}
+.inicio__corpo {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 48px 20px 32px;
+}
+/* A onda começa 32px acima do fim do cabeçalho e desce 32px sobre o fundo. */
+.inicio__onda {
+  position: absolute;
+  left: 0;
+  bottom: -32px;
+  width: 100%;
+  height: 64px;
+  pointer-events: none;
+}
+.inicio__onda-fundo {
+  fill: var(--fundo);
+}
+.inicio__onda-faixa {
+  fill: #008082;
+  fill-opacity: 0.4; /* 60% transparente */
+}
+.inicio__corpo .menu-grupo {
+  margin: 0 2px 10px;
+}
+.inicio .ficha-cards {
+  gap: 16px;
+}
+.inicio .ficha-card {
+  min-height: 108px;
+}
+.inicio .menu-note {
+  margin-top: 22px;
+  text-align: center;
+}
+
+/* ---------- tela inicial: documentos necessários de cada ficha ---------- */
+.docs-inicio {
+  position: relative;
+  margin-top: 36px;
+  padding: 22px 22px 18px;
+  overflow: hidden;
+  background: var(--branco);
+  border: 1px solid rgba(0, 128, 130, 0.14);
+  border-radius: 18px;
+  box-shadow: 0 2px 6px rgba(0, 128, 130, 0.06), 0 14px 32px rgba(0, 128, 130, 0.08);
+}
+/* faixa de acento no topo */
+.docs-inicio::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--marca), #3fb5a8 60%, rgba(0, 128, 130, 0.25));
+}
+.docs-inicio__cab {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.docs-inicio__icone {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: var(--branco);
+  background: linear-gradient(135deg, var(--marca), var(--marca-escura));
+  box-shadow: 0 6px 16px rgba(0, 128, 130, 0.28);
+}
+.docs-inicio__tit {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.docs-inicio__sobre {
+  margin: 0 0 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
   color: var(--marca);
 }
-.menu-item--ficha.is-on::after {
+.docs-inicio__tit h3 {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.3;
+  color: var(--tinta);
+}
+.docs-inicio__resumo {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--marca-escura);
+  background: var(--marca-clara);
+}
+/* abas: no celular rolam na horizontal, sem barra visível */
+.docs-inicio__abas {
+  display: flex;
+  gap: 6px;
+  margin: 18px -22px 0;
+  padding: 2px 22px 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.docs-inicio__abas::-webkit-scrollbar {
+  display: none;
+}
+.docs-inicio__aba {
+  flex: 0 0 auto;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--linha);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--tinta-2);
+  background: var(--fundo);
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.docs-inicio__aba:hover {
+  border-color: rgba(0, 128, 130, 0.4);
+  color: var(--marca-escura);
+}
+.docs-inicio__aba:focus-visible {
+  outline: 3px solid rgba(0, 128, 130, 0.4);
+  outline-offset: 1px;
+}
+.docs-inicio__aba.is-on {
+  color: var(--branco);
+  background: var(--marca);
+  border-color: var(--marca);
+  box-shadow: 0 4px 12px rgba(0, 128, 130, 0.28);
+}
+.docs-inicio__lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.doc-inicio {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--linha-2);
+  border-radius: var(--raio-sm);
+  background: var(--marca-suave);
+  animation: doc-inicio-entra 0.28s cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+@keyframes doc-inicio-entra {
+  from { opacity: 0; transform: translateY(6px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .doc-inicio { animation: none; }
+}
+.doc-inicio__n {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--marca);
+  background: var(--branco);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 128, 130, 0.35);
+}
+.doc-inicio--assinada .doc-inicio__n {
+  color: var(--branco);
+  background: var(--marca);
+  box-shadow: none;
+}
+.doc-inicio__txt {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.doc-inicio__txt strong {
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--tinta);
+}
+.doc-inicio__txt > span:not(.doc-inicio__selo),
+.doc-inicio__txt em {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--tinta-2);
+}
+.doc-inicio__txt em {
+  font-style: normal;
+  color: var(--tinta-3);
+}
+.doc-inicio__selo {
+  align-self: flex-start;
+  margin-bottom: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.doc-inicio--obrigatorio .doc-inicio__selo {
+  color: var(--branco);
+  background: var(--marca);
+}
+.doc-inicio--caso .doc-inicio__selo {
+  color: #8a5300;
+  background: #fff1d6;
+}
+.doc-inicio--opcional .doc-inicio__selo {
+  color: var(--tinta-2);
+  background: var(--linha-2);
+}
+.docs-inicio__nota {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--linha);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tinta-3);
+}
+@media (max-width: 480px) {
+  .docs-inicio {
+    margin-top: 28px;
+    padding: 18px 16px 14px;
+  }
+  .docs-inicio__abas {
+    margin: 14px -16px 0;
+    padding: 2px 16px 4px;
+  }
+  .docs-inicio__lista {
+    grid-template-columns: 1fr;
+  }
+}
+.menu-topo {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 56px 22px 20px;
+  overflow: hidden;
+  color: var(--branco);
+  background:
+    radial-gradient(circle at 92% 120%, rgba(255, 255, 255, 0.16) 0 34%, transparent 35%),
+    radial-gradient(circle at 70% -60%, rgba(255, 255, 255, 0.1) 0 40%, transparent 41%),
+    linear-gradient(115deg, var(--marca-escura) 0%, var(--marca) 45%, #2a9a9b 100%);
+  border-radius: 20px 20px 0 0;
+}
+.menu-topo__notas {
+  position: absolute;
+  right: 44px;
+  top: 50%;
+  width: 150px;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
+}
+.menu-topo__logo {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 6px 18px rgba(0, 60, 61, 0.25);
+}
+.menu-topo__logo img {
+  width: 50px;
+  height: auto;
+}
+.menu-topo__txt {
+  position: relative;
+  min-width: 0;
+}
+.menu-topo__txt h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.menu-topo__txt p {
+  margin: 2px 0 10px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+.menu-topo__pilula {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.menu-topo__pilula i {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--branco);
+}
+.menu-topo__pilula span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ficha-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 4px 2px;
+}
+.ficha-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 92px;
+  padding: 16px;
+  text-align: left;
+  font: inherit;
+  color: var(--tinta);
+  background: var(--branco);
+  border: 1px solid rgba(0, 128, 130, 0.14);
+  border-radius: var(--raio);
+  box-shadow: 0 2px 6px rgba(0, 128, 130, 0.06), 0 10px 24px rgba(0, 128, 130, 0.08);
+  cursor: pointer;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 0.8, 0.3, 1),
+    box-shadow 0.22s,
+    border-color 0.22s,
+    background 0.22s;
+}
+.ficha-card__icone {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  color: var(--marca);
+  background: var(--marca-clara);
+  transition: background 0.22s, color 0.22s;
+}
+.ficha-card__txt {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ficha-card__txt strong {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--tinta-3);
+}
+.ficha-card__txt span {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.ficha-card__marca {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--branco);
+  background: var(--marca);
+}
+.ficha-card.is-on {
+  border-color: var(--marca);
+  background: var(--marca-suave);
+}
+.ficha-card.is-on .ficha-card__marca {
+  display: inline-block;
+}
+/* A explicação é um balão de ajuda à parte, logo abaixo do card: não cobre
+   o nome da ficha. O card em hover sobe de camada para o balão passar por
+   cima do card de baixo. */
+.ficha-card__dica {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 10px;
+  right: 10px;
+  z-index: 3;
+  display: block;
+  padding: 12px 14px 12px 44px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--tinta-2);
+  background: var(--branco);
+  border: 1px solid rgba(0, 128, 130, 0.18);
+  border-radius: var(--raio-sm);
+  box-shadow: 0 4px 12px rgba(0, 128, 130, 0.1), 0 16px 32px rgba(16, 35, 31, 0.14);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition:
+    opacity 0.2s,
+    transform 0.2s cubic-bezier(0.22, 0.8, 0.3, 1),
+    visibility 0s 0.2s;
+  pointer-events: none;
+}
+/* setinha apontando para o card */
+.ficha-card__dica::before {
   content: "";
-  margin-left: auto;
-  width: 8px;
-  height: 14px;
-  border: solid currentColor;
-  border-width: 0 2.5px 2.5px 0;
-  transform: rotate(45deg) translate(-2px, -2px);
+  position: absolute;
+  top: -7px;
+  left: 28px;
+  width: 12px;
+  height: 12px;
+  background: var(--branco);
+  border-left: 1px solid rgba(0, 128, 130, 0.18);
+  border-top: 1px solid rgba(0, 128, 130, 0.18);
+  transform: rotate(45deg);
+}
+/* ícone "?" de ajuda */
+.ficha-card__dica::after {
+  content: "?";
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--branco);
+  background: var(--marca);
+}
+.ficha-card__dica-tit {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--marca);
+}
+.ficha-card__dica-txt {
+  display: block;
+}
+@media (hover: hover) {
+  .ficha-card:hover {
+    z-index: 2;
+    background: #eceff0;
+    transform: translateY(-3px);
+    border-color: rgba(0, 128, 130, 0.35);
+    box-shadow: 0 4px 10px rgba(0, 128, 130, 0.1), 0 18px 36px rgba(0, 128, 130, 0.18);
+  }
+  .ficha-card:hover .ficha-card__icone {
+    color: var(--branco);
+    background: var(--marca);
+  }
+  .ficha-card:hover .ficha-card__dica {
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    transition:
+      opacity 0.2s 0.12s,
+      transform 0.2s 0.12s cubic-bezier(0.22, 0.8, 0.3, 1);
+  }
+}
+.ficha-card:focus-visible {
+  z-index: 2;
+  outline: 3px solid rgba(0, 128, 130, 0.45);
+  outline-offset: 2px;
+}
+.ficha-card:focus-visible .ficha-card__dica {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+}
+.ficha-card:active {
+  transform: scale(0.98);
+}
+/* Efeito de hover aplicado ao toque (classe posta pelo app.js). */
+.ficha-card.is-tocado {
+  z-index: 2;
+  background: #eceff0;
+  transform: translateY(-3px);
+  border-color: var(--marca);
+  box-shadow: 0 4px 10px rgba(0, 128, 130, 0.12), 0 18px 36px rgba(0, 128, 130, 0.22);
+  transition-duration: 0.14s;
+}
+.ficha-card.is-tocado .ficha-card__icone {
+  color: var(--branco);
+  background: var(--marca);
+}
+/* Sem mouse não há hover: o quadro de ajuda fica sempre visível, dentro do
+   card, abaixo do nome. */
+@media (hover: none) {
+  .ficha-card {
+    flex-wrap: wrap;
+  }
+  .ficha-card__txt {
+    flex: 1;
+    padding-right: 48px;
+  }
+  .ficha-card__dica,
+  .ficha-card:focus-visible .ficha-card__dica {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    flex: 1 0 100%;
+    padding: 10px 12px 10px 40px;
+    background: var(--marca-suave);
+    border-color: var(--linha);
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+  }
+  .ficha-card__dica::before {
+    display: none;
+  }
+  .ficha-card__dica::after {
+    top: 10px;
+    left: 12px;
+  }
+}
+@media (max-width: 480px) {
+  .menu-topo.inicio__topo {
+    padding: calc(var(--topo) + 24px) 16px 28px;
+  }
+  .inicio__topo .menu-topo__logo img {
+    width: 96px;
+  }
+  .inicio__topo .menu-topo__pilula,
+  .inicio__topo .menu-topo__pilula span {
+    white-space: normal;
+  }
+  .inicio__topo .menu-topo__pilula {
+    border-radius: 12px;
+    line-height: 1.3;
+  }
+  .inicio__topo .menu-topo__txt h2 {
+    font-size: 21px;
+  }
+  .inicio__topo .menu-topo__notas {
+    width: 120px;
+  }
+  .inicio__corpo {
+    padding: 40px 16px 24px;
+  }
+  .inicio__acoes {
+    top: calc(var(--topo) + 10px);
+    right: 10px;
+  }
+  .inicio__finalizar {
+    width: 36px;
+    padding: 0;
+    justify-content: center;
+  }
+  .inicio__finalizar span {
+    display: none;
+  }
+  .menu-topo {
+    gap: 12px;
+    padding: 18px 48px 18px 16px;
+  }
+  .menu-topo__logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+  }
+  .menu-topo__logo img {
+    width: 40px;
+  }
+  .menu-topo__txt h2 {
+    font-size: 19px;
+  }
+  .menu-topo__notas {
+    width: 110px;
+    right: 24px;
+  }
+  .ficha-cards {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .inicio {
+    animation: none;
+  }
+  .ficha-card,
+  .ficha-card__dica {
+    transition: none;
+  }
 }
 .menu-sep {
   margin: 8px 4px;

@@ -1,4 +1,4 @@
-/* Desenha a ficha ativa (uma das propostas de filiação ou o desligamento) em canvas, no formato A4 retrato.
+/* Desenha a ficha ativa (uma das propostas de filiação, o desligamento ou a declaração de residência) em canvas, no formato A4 retrato.
    O mesmo desenho alimenta a pré-visualização, o JPG e o PDF — garantindo WYSIWYG. */
 (function (global) {
   'use strict';
@@ -819,6 +819,139 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* declaração de residência (página única)                             */
+  /* ------------------------------------------------------------------ */
+  /* Linha de texto corrido com lacunas: cada parte é um trecho (string) ou
+     uma lacuna { v, d, p }; as lacunas dividem o espaço que sobra na
+     proporção de p (1). Devolve as posições [x, largura] de cada lacuna. */
+  function linhaLacunas(g, x, y, fim, partes) {
+    fonte(g, 10, '');
+    var fixo = 0, soma = 0, nLac = 0;
+    partes.forEach(function (pt) {
+      if (typeof pt === 'string') fixo += g.measureText(pt).width;
+      else { soma += pt.p || 1; nLac++; }
+    });
+    var livre = fim - x - fixo - 4 * nLac, px = x, pos = [];
+    partes.forEach(function (pt) {
+      if (typeof pt === 'string') { px = trecho(g, pt, px, y); return; }
+      var w = livre * (pt.p || 1) / soma;
+      pos.push([px + 2, w]);
+      px = lacuna(g, px + 2, y, w, pt.v, pt.d) + 2;
+    });
+    return pos;
+  }
+
+  /* Parágrafo com trechos de pesos diferentes ([{ t, peso }]), quebrado por
+     palavra; os trechos são separados por espaço. Devolve o y da última linha. */
+  function paragrafoRico(g, partes, x, y, larg, tam, alturaLinha) {
+    var px = x;
+    fonte(g, tam, '');
+    var espaco = g.measureText(' ').width;
+    partes.forEach(function (pt) {
+      pt.t.split(/\s+/).forEach(function (palavra) {
+        fonte(g, tam, pt.peso || '');
+        var w = g.measureText(palavra).width;
+        if (px > x && px + w > x + larg) { px = x; y += alturaLinha; }
+        texto(g, palavra, px, y, { tam: tam, peso: pt.peso });
+        px += w + espaco;
+      });
+    });
+    return y;
+  }
+
+  var ART_299 ='“Art. 299 – Omitir, em documento público ou particular, declaração que nele deveria constar, ou nele ' +
+    'inserir ou fazer inserir declaração falsa ou diversa da que devia ser escrita, com o fim de prejudicar direito, ' +
+    'criar obrigação ou alterar a verdade sobre fato juridicamente relevante.”';
+  var PENA_299 = '“Pena: reclusão de 1 (um) a 5 (cinco) anos e multa, se o documento é público, e reclusão de 1 (um) ' +
+    'a 3 (três) anos, se o documento é particular.”';
+
+  function paginaResidencia(g, d, imgs, destaque) {
+    var x = MARGEM;
+    var larg = PAG_L - MARGEM * 2;
+    var fim = x + larg;
+    var y = cabecalho(g, 1, imgs) + 22;
+    var pos, px;
+
+    texto(g, 'Ilmo. Sr. Presidente da ABRAMUS', x, y, { tam: 11 });
+    y += 38;
+
+    // qualificação do requerente
+    linhaLacunas(g, x, y, fim, ['Eu ', { v: d.nome, d: destaque }]);
+    y += 26;
+    linhaLacunas(g, x, y, fim, ['documento de identidade ', { v: d.rg, d: destaque }, '   órgão exp. ', { v: d.rg_orgao, d: destaque, p: 0.8 }]);
+    y += 26;
+    linhaLacunas(g, x, y, fim, ['CPF ', { v: d.cpf, d: destaque, p: 1.1 }, '   nacionalidade ', { v: d.nacionalidade, d: destaque },
+      '   naturalidade ', { v: d.naturalidade, d: destaque }]);
+    y += 26;
+    linhaLacunas(g, x, y, fim, ['telefone (DDD e nº) ', { v: d.tel }, '   celular ', { v: d.cel, d: destaque }]);
+    y += 26;
+    linhaLacunas(g, x, y, fim, ['e-mail ', { v: d.email, d: destaque }]);
+    y += 30;
+
+    // declaração e endereço
+    y = paragrafoRico(g, [
+      { t: 'Na falta de documentos para comprovação de residência,' }, { t: 'DECLARO', peso: 'bold' },
+      { t: 'para os devidos fins, sob as penas da Lei, ser residente e domiciliado(a)' }
+    ], x, y, larg, 10, 17) + 26;
+    var rua = [d.endereco, d.numero, d.complemento].filter(Boolean).join(', ');
+    linhaLacunas(g, x, y, fim, ['no endereço ', { v: rua, d: destaque && !(d.endereco && d.numero) }]);
+    y += 26;
+    pos = linhaLacunas(g, x, y, fim, [
+      { v: d.bairro, d: destaque, p: 1.3 }, '  ', { v: d.cidade, d: destaque, p: 1.3 }, '  ',
+      { v: d.uf, d: destaque, p: 0.4 }, '  ', { v: d.cep, d: destaque, p: 0.8 }
+    ]);
+    ['(Bairro)', '(Cidade)', '(UF)', '(CEP)'].forEach(function (r, i) {
+      texto(g, r, pos[i][0], y + 13, { tam: 7.5, cor: COR.suave });
+    });
+    y += 42;
+
+    // ciência da sanção penal (art. 299 do Código Penal)
+    y = paragrafo(g, 'Declaro ainda estar ciente de que a falsidade da presente declaração pode implicar na sanção penal ' +
+      'prevista no Art. 299 do Código Penal, conforme transcrição abaixo:', x, y, larg, 10, 15, { peso: 'bold' });
+    y += 8;
+    var alt = (quebra(g, ART_299, larg - 24, 8.5).length + quebra(g, PENA_299, larg - 24, 8.5, 'bold').length) * 11.5 + 22;
+    retangulo(g, x, y, larg, alt, { preenche: COR.tealClaro });
+    var yq = paragrafo(g, ART_299, x + 12, y + 17, larg - 24, 8.5, 11.5);
+    paragrafo(g, PENA_299, x + 12, yq, larg - 24, 8.5, 11.5, { peso: 'bold' });
+    y += alt + 50;
+
+    // local e data, como no PDF: "cidade, dia / mês / ano"
+    var dt = dataExtenso(d.data_assinatura, true);
+    var pendData = destaque && !dt[0];
+    var wLocal = 180;
+    px = lacuna(g, x, y, wLocal, d.local_assinatura, destaque);
+    px = trecho(g, ', ', px, y);
+    var xData = px;
+    px = lacuna(g, px, y, 30, dt[0], pendData);
+    px = trecho(g, ' / ', px, y);
+    px = lacuna(g, px, y, 100, dt[1], pendData);
+    px = trecho(g, ' / ', px, y);
+    lacuna(g, px, y, 46, dt[2], pendData);
+    texto(g, '(Cidade)', x, y + 15, { tam: 8, cor: COR.suave });
+    texto(g, '(Data)', xData, y + 15, { tam: 8, cor: COR.suave });
+    y += 80;
+
+    // assinatura do requerente
+    linha(g, x, y, x + 240, y, COR.tinta, 0.8);
+    texto(g, 'Assinatura do Requerente', x, y + 12, { tam: 8, cor: COR.suave });
+    if (d.nome) texto(g, String(d.nome).toUpperCase(), x, y + 25, { tam: 9, peso: 'bold' });
+    y += 58;
+
+    // documentos necessários
+    y = secao(g, x, y, larg, 'Documentos necessários');
+    S.DOCUMENTOS.forEach(function (doc) {
+      g.fillStyle = COR.teal;
+      g.beginPath();
+      g.arc(x + 4, y + 3, 2, 0, Math.PI * 2);
+      g.fill();
+      texto(g, doc.rot + (doc.obs ? ' — ' + doc.obs : ''), x + 12, y + 6.5, { tam: 8.5 });
+      y += 16;
+    });
+
+    rodape(g, 1);
+  }
+
+  /* ------------------------------------------------------------------ */
   /* API                                                                 */
   /* ------------------------------------------------------------------ */
   // data: URL de js/logo.js — ver lá por que não é o arquivo de icons/.
@@ -855,7 +988,8 @@
     menor: [pagina1, pagina2],
     pj: [pagina1, pagina2PJ],
     herdeiro: paginasHerdeiro,
-    desligamento: [paginaDesligamento]
+    desligamento: [paginaDesligamento],
+    residencia: [paginaResidencia]
   };
 
   /* Devolve Promise<[canvas, ...]>, uma por página da ficha ativa. */

@@ -1,7 +1,7 @@
 {
   "name": "Proposta de Filiação — ABRAMUS",
   "short_name": "Filiação",
-  "description": "Preencha, confira e exporte as fichas de Filiação (Pessoa Física, Menor de idade, Pessoa Jurídica, Herdeiro/Sucessor) e o Pedido de Desligamento da ABRAMUS. Funciona offline e nenhum dado sai do aparelho.",
+  "description": "Preencha, confira e exporte as fichas de Filiação (Pessoa Física, Menor de idade, Pessoa Jurídica, Herdeiro/Sucessor), o Pedido de Desligamento e a Declaração de Residência da ABRAMUS. Funciona offline e nenhum dado sai do aparelho.",
   "id": "/filiacao-abramus/",
   "start_url": "./index.html",
   "scope": "./",
