@@ -117,7 +117,11 @@
       if (step.revisao) {
         sec.appendChild(construirRevisao());
       } else if (step.anexos) {
-        sec.appendChild(construirAnexos());
+        sec.appendChild(construirEntrega());
+        sec.appendChild(construirEntregaManual());
+        var anexos = construirAnexos();
+        anexos.id = 'anexosApp';
+        sec.appendChild(anexos);
       } else {
         var grade = el('div', 'grid');
         step.campos.forEach(function (campo) { grade.appendChild(construirCampo(campo)); });
@@ -484,6 +488,140 @@
 
   var ICONE_CAMERA = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
   var ICONE_CLIPE = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="m20 11-7.6 7.6a5 5 0 0 1-7.1-7.1L13 3.8a3.3 3.3 0 0 1 4.7 4.7l-7.6 7.6a1.7 1.7 0 0 1-2.4-2.4l7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /* Como a ficha assinada chega à ABRAMUS: pelo correio ou entregue na
+     recepção. Fica nos dados da ficha (forma_entrega), fora das pendências.
+     Sem escolha, a etapa segue com anexos e envio por e-mail; com uma das
+     duas, os anexos dão lugar às instruções de entrega manual. */
+  var ENDERECO_ABRAMUS = ['ABRAMUS — Associação Brasileira de Música e Artes', 'Rua Castro Alves, 713 — Aclimação',
+    'São Paulo — SP', 'CEP 01532-001'];
+  var FORMAS_ENTREGA = [
+    { v: 'correio', rot: 'Enviar ficha assinada e documentos pelo correio',
+      desc: 'Você envia a ficha assinada e os documentos pelo Correio (postal).',
+      ic: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.8"/>' },
+    { v: 'recepcao', rot: 'Entregar a ficha assinada na recepção da ABRAMUS',
+      desc: 'Você leva a ficha assinada pessoalmente à recepção da ABRAMUS.',
+      ic: '<path d="M4 21V6l8-3 8 3v15M2.5 21h19M9 21v-5h6v5M8 9h2M14 9h2M8 12.5h2M14 12.5h2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' }
+  ];
+
+  function construirEntrega() {
+    var box = el('fieldset', 'entrega');
+    box.appendChild(el('legend', 'entrega__rot', 'Como você vai entregar a ficha?'));
+    box.appendChild(el('p', 'entrega__dica', 'Opcional. Se não escolher, você anexa os documentos e envia por e-mail pelo próprio app, logo abaixo.'));
+    var grade = el('div', 'entrega__opcoes');
+    FORMAS_ENTREGA.forEach(function (o) {
+      var lab = el('label', 'entrega__op');
+      lab.dataset.v = o.v;
+      var inp = el('input');
+      inp.type = 'radio';
+      inp.name = 'forma_entrega';
+      inp.value = o.v;
+      inp.className = 'sr-only';
+      // tocar de novo na opção marcada desmarca (rádio comum não deixa)
+      inp.addEventListener('click', function () {
+        St.set('forma_entrega', St.get('forma_entrega') === o.v ? '' : o.v);
+        desenharEntrega();
+      });
+      lab.appendChild(inp);
+      var ic = el('span', 'entrega__ic');
+      ic.innerHTML = '<svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">' + o.ic + '</svg>';
+      lab.appendChild(ic);
+      var t = el('span', 'entrega__txt');
+      t.appendChild(el('strong', null, o.rot));
+      t.appendChild(el('span', null, o.desc));
+      lab.appendChild(t);
+      lab.appendChild(el('span', 'entrega__marca'));
+      grade.appendChild(lab);
+    });
+    box.appendChild(grade);
+    return box;
+  }
+
+  function construirEntregaManual() {
+    var card = el('div', 'card entrega-manual');
+    card.id = 'entregaManual';
+    card.hidden = true;
+    var topo = el('div', 'entrega-manual__topo');
+    var ic = el('span', 'entrega-manual__ic');
+    ic.setAttribute('aria-hidden', 'true');
+    topo.appendChild(ic);
+    var tt = el('div');
+    tt.appendChild(el('h2', 'card__title', ''));
+    tt.appendChild(el('p', 'entrega-manual__sub', ''));
+    topo.appendChild(tt);
+    card.appendChild(topo);
+
+    card.appendChild(el('ol', 'entrega-manual__passos'));
+
+    var acoes = el('div', 'entrega-manual__acoes');
+    var bRev = el('button', 'btn btn--primary', 'Ir para a Revisão e baixar a ficha');
+    bRev.type = 'button';
+    bRev.addEventListener('click', function () {
+      for (var i = 0; i < S.STEPS.length; i++) if (S.STEPS[i].revisao) { irPara(i); return; }
+    });
+    acoes.appendChild(bRev);
+    var bApp = el('button', 'btn btn--ghost', 'Prefiro anexar e enviar pelo app');
+    bApp.type = 'button';
+    bApp.addEventListener('click', function () {
+      St.set('forma_entrega', '');
+      desenharEntrega();
+    });
+    acoes.appendChild(bApp);
+    card.appendChild(acoes);
+    return card;
+  }
+
+  function desenharEntrega() {
+    var v = St.get('forma_entrega');
+    $$('.entrega__op').forEach(function (lab) {
+      var on = lab.dataset.v === v;
+      lab.classList.toggle('is-on', on);
+      $('input', lab).checked = on;
+    });
+    var manual = $('#entregaManual'), app = $('#anexosApp');
+    if (!manual || !app) return;
+    var forma = null;
+    FORMAS_ENTREGA.forEach(function (o) { if (o.v === v) forma = o; });
+    manual.hidden = !forma;
+    app.hidden = !!forma;
+    if (!forma) return;
+
+    var correio = forma.v === 'correio';
+    $('.entrega-manual__ic', manual).innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26">' + forma.ic + '</svg>';
+    $('.card__title', manual).textContent = correio ? 'Envio pelo Correio' : 'Entrega na recepção da ABRAMUS';
+    $('.entrega-manual__sub', manual).textContent = correio
+      ? 'Envie a ficha assinada e as cópias dos documentos pelo Correio para o endereço abaixo.'
+      : 'Leve a ficha assinada e as cópias dos documentos à recepção da ABRAMUS, no endereço abaixo.';
+
+    var passos = $('.entrega-manual__passos', manual);
+    passos.innerHTML = '';
+    var p1 = el('li');
+    p1.appendChild(el('strong', null, 'Imprima e assine a ficha'));
+    p1.appendChild(el('span', null, 'Baixe a ficha na Revisão, imprima todas as páginas e assine à mão, conforme o documento de identificação.'));
+    passos.appendChild(p1);
+
+    var p2 = el('li');
+    p2.appendChild(el('strong', null, 'Junte os documentos'));
+    var ul = el('ul', 'entrega-manual__docs');
+    S.requisitosAnexos(St.todos()).forEach(function (r) {
+      if (r.situacao === 'naoSeAplica') return;
+      var li = el('li');
+      li.appendChild(el('span', null, r.rot + (r.obs && r.k !== 'ficha_assinada' ? ' — ' + r.obs : '')));
+      if (r.situacao === 'opcional') li.appendChild(el('em', 'entrega-manual__selo', 'Opcional'));
+      ul.appendChild(li);
+    });
+    p2.appendChild(ul);
+    passos.appendChild(p2);
+
+    var p3 = el('li');
+    p3.appendChild(el('strong', null, correio ? 'Envie pelo Correio para' : 'Entregue na recepção'));
+    var end = el('address', 'entrega-manual__end');
+    ENDERECO_ABRAMUS.forEach(function (linha, i) {
+      end.appendChild(el(i === 0 ? 'strong' : 'span', null, linha));
+    });
+    p3.appendChild(end);
+    passos.appendChild(p3);
+  }
 
   function construirAnexos() {
     var wrap = el('div', 'anexos');
@@ -1212,6 +1350,7 @@
   /* ---------------------------------------------------------------- */
   function atualizar() {
     var d = St.todos();
+    desenharEntrega();
 
     // valores + visibilidade + erros
     S.STEPS.forEach(function (step) {
