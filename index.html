@@ -20,6 +20,7 @@
       type="image/png"
     />
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta
       name="apple-mobile-web-app-status-bar-style"
@@ -304,6 +305,20 @@
           de Música e Artes. Todos os direitos reservados.
         </p>
       </footer>
+    </section>
+
+    <!-- Celular/tablet: quando o navegador não deixa o script fechar a janela,
+         o app termina nesta tela, já sem dados (ver sairDoApp() em app.js). -->
+    <section id="encerrado" class="encerrado" aria-labelledby="encerradoTit" hidden>
+      <div class="encerrado__box">
+        <span class="encerrado__icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="34" height="34"><path d="M12 3v8M6.3 6.8a8 8 0 1 0 11.4 0" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round" /></svg>
+        </span>
+        <h2 id="encerradoTit">Aplicação finalizada</h2>
+        <p>Os dados preenchidos foram apagados deste aparelho.</p>
+        <p class="encerrado__dica" id="encerradoDica">Você já pode fechar esta janela.</p>
+        <button id="encerradoReabrir" class="btn btn--ghost" type="button">Começar de novo</button>
+      </div>
     </section>
 
     <div id="menuSheet" class="sheet" hidden>

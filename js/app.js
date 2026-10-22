@@ -51,14 +51,46 @@
     irPara(0);
     atualizar();
     if (emAppNativo() && global.FichaAndroid.sair) { global.FichaAndroid.sair(); return; }
-    /* No navegador a aba não é nossa para fechar (close() só funciona em
-       janela aberta por script, como a da PWA instalada no desktop). Se
-       continuar aberta, volta à tela inicial já sem dados. */
-    try { global.close(); } catch (e) { /* segue para a tela inicial */ }
     fichaEscolhida = false;
     aplicarFicha();
-    abrirInicio(false);
-    toast('Aplicação finalizada. Os dados preenchidos foram apagados deste aparelho.');
+    /* close() só é atendido em janela aberta por script ou com uma única
+       entrada no histórico — caso da PWA instalada, que fecha de verdade.
+       Numa aba comum o navegador recusa em silêncio: no celular/tablet o app
+       termina na tela de encerramento; no computador volta à tela inicial. */
+    try { global.close(); } catch (e) { /* trata abaixo */ }
+    setTimeout(function () {
+      if (global.closed) return;
+      if (emAparelhoMovel()) { mostrarEncerrado(); return; }
+      abrirInicio(false);
+      toast('Aplicação finalizada. Os dados preenchidos foram apagados deste aparelho.');
+    }, 300);
+  }
+
+  function emAparelhoMovel() {
+    var ua = (global.navigator && global.navigator.userAgent) || '';
+    return emIOS() || /Android|Mobi|Tablet/i.test(ua) ||
+           !!(global.matchMedia && global.matchMedia('(pointer: coarse)').matches);
+  }
+
+  function emModoApp() {
+    return !!((global.matchMedia && global.matchMedia('(display-mode: standalone)').matches) ||
+              global.navigator.standalone);
+  }
+
+  /* A dica diz como fechar no aparelho em uso, já que o script não conseguiu. */
+  function mostrarEncerrado() {
+    var dica;
+    if (emModoApp()) {
+      dica = emIOS()
+        ? 'Para fechar, deslize de baixo para cima e afaste o aplicativo.'
+        : 'Para fechar, abra os apps recentes e deslize o aplicativo para fora.';
+    } else {
+      dica = 'Para fechar, feche esta aba do navegador.';
+    }
+    $('#encerradoDica').textContent = dica;
+    $('#inicio').hidden = true;
+    $('#encerrado').hidden = false;
+    document.body.style.overflow = 'hidden';
   }
 
   var timerPreview = null;
@@ -1907,6 +1939,11 @@
     $('#miSair').addEventListener('click', pedirSaida);
     $('#btnSair').addEventListener('click', pedirSaida);
     $('#confirmSim').addEventListener('click', sairDoApp);
+    $('#encerradoReabrir').addEventListener('click', function () {
+      $('#encerrado').hidden = true;
+      document.body.style.overflow = '';
+      abrirInicio(false);
+    });
     $('#envioOk').addEventListener('click', confirmarEnvio);
 
     $('#miInstall').addEventListener('click', function () {

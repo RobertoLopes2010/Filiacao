@@ -2043,6 +2043,57 @@ select.input {
   margin-top: 18px;
 }
 
+/* ---------- tela de encerramento (celular/tablet) ---------- */
+/* Acima de tudo, inclusive dos sheets: depois de sair não há o que mostrar. */
+.encerrado {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: calc(var(--topo) + 24px) 24px calc(var(--baixo) + 24px);
+  background: linear-gradient(160deg, var(--marca) 0%, var(--marca-escura) 100%);
+  color: var(--branco);
+  text-align: center;
+  animation: inicio-entra 0.24s ease-out;
+}
+.encerrado__box {
+  max-width: 360px;
+}
+.encerrado__icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+}
+.encerrado h2 {
+  margin: 0 0 10px;
+  font-size: 1.4rem;
+}
+.encerrado p {
+  margin: 0 0 8px;
+  line-height: 1.45;
+  opacity: 0.92;
+}
+.encerrado .encerrado__dica {
+  margin: 18px 0 26px;
+  padding: 12px 14px;
+  border-radius: var(--raio-sm);
+  background: rgba(255, 255, 255, 0.14);
+  font-weight: 600;
+  opacity: 1;
+}
+.encerrado .btn {
+  color: var(--branco);
+  border-color: rgba(255, 255, 255, 0.6);
+  background: transparent;
+}
+
 /* ---------- tela inicial: cabeçalho e cards das fichas ---------- */
 /* Cobre a barra e o formulário (abaixo dos sheets, que ficam em z-index 60). */
 .inicio {
