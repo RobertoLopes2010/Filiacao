@@ -521,13 +521,17 @@
   var ICONE_CAMERA = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
   var ICONE_CLIPE = '<svg viewBox="0 0 24 24" width="18" height="18"><path d="m20 11-7.6 7.6a5 5 0 0 1-7.1-7.1L13 3.8a3.3 3.3 0 0 1 4.7 4.7l-7.6 7.6a1.7 1.7 0 0 1-2.4-2.4l7-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
-  /* Como a ficha assinada chega à ABRAMUS: pelo correio ou entregue na
-     recepção. Fica nos dados da ficha (forma_entrega), fora das pendências.
-     Sem escolha, a etapa segue com anexos e envio por e-mail; com uma das
-     duas, os anexos dão lugar às instruções de entrega manual. */
+  /* Como a ficha assinada chega à ABRAMUS: por e-mail pelo app, pelo correio
+     ou entregue na recepção. Fica nos dados da ficha (forma_entrega), fora das
+     pendências do formulário, mas a escolha é obrigatória: sem ela a etapa só
+     mostra a pergunta. E-mail mostra anexos e envio; correio e recepção, as
+     instruções de entrega manual. */
   var ENDERECO_ABRAMUS = ['ABRAMUS — Associação Brasileira de Música e Artes', 'Rua Castro Alves, 713 — Aclimação',
     'São Paulo — SP', 'CEP 01532-001'];
   var FORMAS_ENTREGA = [
+    { v: 'email', rot: 'Enviar ficha assinada e documentos por e-mail',
+      desc: 'Você fotografa ou anexa a ficha assinada e os documentos aqui e envia pelo app.',
+      ic: '<path d="M3.5 6h17v12h-17z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' },
     { v: 'correio', rot: 'Enviar ficha assinada e documentos pelo correio',
       desc: 'Você envia a ficha assinada e os documentos pelo Correio (postal).',
       ic: '<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="17.5" r="1.8" fill="none" stroke="currentColor" stroke-width="1.8"/>' },
@@ -538,8 +542,11 @@
 
   function construirEntrega() {
     var box = el('fieldset', 'entrega');
-    box.appendChild(el('legend', 'entrega__rot', 'Como você vai entregar a ficha?'));
-    box.appendChild(el('p', 'entrega__dica', 'Opcional. Se não escolher, você anexa os documentos e envia por e-mail pelo próprio app, logo abaixo.'));
+    var leg = el('legend', 'entrega__rot');
+    leg.appendChild(el('span', null, 'Como você vai entregar a ficha?'));
+    leg.appendChild(el('em', 'entrega__obrig', 'Obrigatório'));
+    box.appendChild(leg);
+    box.appendChild(el('p', 'entrega__dica', 'Escolha uma das opções para seguir.'));
     var grade = el('div', 'entrega__opcoes');
     FORMAS_ENTREGA.forEach(function (o) {
       var lab = el('label', 'entrega__op');
@@ -549,10 +556,11 @@
       inp.name = 'forma_entrega';
       inp.value = o.v;
       inp.className = 'sr-only';
-      // tocar de novo na opção marcada desmarca (rádio comum não deixa)
+      // tocar de novo na opção marcada desmarca (rádio comum não deixa) e a
+      // pergunta volta a ficar pendente
       inp.addEventListener('click', function () {
         St.set('forma_entrega', St.get('forma_entrega') === o.v ? '' : o.v);
-        desenharEntrega();
+        atualizar();
       });
       lab.appendChild(inp);
       var ic = el('span', 'entrega__ic');
@@ -560,7 +568,7 @@
       lab.appendChild(ic);
       var t = el('span', 'entrega__txt');
       t.appendChild(el('strong', null, o.rot));
-      t.appendChild(el('span', null, o.desc));
+      t.appendChild(el('span', null, o.v === 'email' ? o.desc.replace('pelo app', 'pelo app para ' + S.EMAIL_DESTINO) : o.desc));
       lab.appendChild(t);
       lab.appendChild(el('span', 'entrega__marca'));
       grade.appendChild(lab);
@@ -595,8 +603,8 @@
     var bApp = el('button', 'btn btn--ghost', 'Prefiro anexar e enviar pelo app');
     bApp.type = 'button';
     bApp.addEventListener('click', function () {
-      St.set('forma_entrega', '');
-      desenharEntrega();
+      St.set('forma_entrega', 'email');
+      atualizar();
     });
     acoes.appendChild(bApp);
     card.appendChild(acoes);
@@ -610,13 +618,16 @@
       lab.classList.toggle('is-on', on);
       $('input', lab).checked = on;
     });
+    var box = $('.entrega');
     var manual = $('#entregaManual'), app = $('#anexosApp');
-    if (!manual || !app) return;
+    if (!box || !manual || !app) return;
     var forma = null;
     FORMAS_ENTREGA.forEach(function (o) { if (o.v === v) forma = o; });
-    manual.hidden = !forma;
-    app.hidden = !!forma;
-    if (!forma) return;
+    box.classList.toggle('is-pendente', !forma);
+    $('.entrega__dica', box).hidden = !!forma;
+    app.hidden = !forma || forma.v !== 'email';
+    manual.hidden = !forma || forma.v === 'email';
+    if (manual.hidden) return;
 
     var correio = forma.v === 'correio';
     $('.entrega-manual__ic', manual).innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26">' + forma.ic + '</svg>';
@@ -1480,8 +1491,11 @@
       else b.removeAttribute('aria-current');
       var step = S.STEPS[i];
       if (step.anexos) {
-        b.classList.toggle('tem-pend', !!anexosValidacao && !anexosValidacao.ok);
-        b.classList.toggle('esta-ok', !!anexosValidacao && anexosValidacao.ok);
+        // sem forma de entrega é pendência; entrega manual não depende dos anexos
+        var forma = St.get('forma_entrega');
+        var ok = forma === 'correio' || forma === 'recepcao' || (forma === 'email' && !!anexosValidacao && anexosValidacao.ok);
+        b.classList.toggle('tem-pend', !forma || (forma === 'email' && !!anexosValidacao && !anexosValidacao.ok));
+        b.classList.toggle('esta-ok', ok);
         return;
       }
       var n = step.revisao ? 0 : St.pendenciasPorStep(step.id).length;
